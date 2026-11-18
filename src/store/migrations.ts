@@ -1,8 +1,8 @@
 import { nanoid } from 'nanoid';
-import { AppData } from '../types';
+import { AppData, SubCost } from '../types';
 import { buildDefaultSettings } from './seed';
 
-export const CURRENT_SCHEMA_VERSION = 3;
+export const CURRENT_SCHEMA_VERSION = 4;
 
 export function isValidAppData(value: unknown): value is AppData {
   if (!value || typeof value !== 'object') return false;
@@ -40,10 +40,15 @@ export function migrate(persistedState: unknown, version: number): AppData {
         included: typeof c.included === 'boolean' ? c.included : true,
         archived: typeof c.archived === 'boolean' ? c.archived : false,
         subCosts: Array.isArray(c.subCosts)
-          ? c.subCosts.map((sc) => ({
+          ? c.subCosts.map((sc): SubCost => ({
               ...sc,
               included: typeof sc.included === 'boolean' ? sc.included : true,
               maybe: typeof sc.maybe === 'boolean' ? sc.maybe : false,
+              // v4: optional per-item due date; drop anything that isn't a yyyy-mm-dd string
+              dueDate:
+                typeof sc.dueDate === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(sc.dueDate)
+                  ? sc.dueDate
+                  : undefined,
             }))
           : [],
       }))

@@ -20,6 +20,7 @@ import {
   costPaid,
   costSource,
   costStatus,
+  costNextDue,
   isCostExpired,
 } from '../../store/selectors';
 import { formatMonthYear, formatShortDate } from '../../lib/dates';
@@ -62,10 +63,11 @@ function CostRow({ cost, open, draggable, onToggle }: CostRowProps) {
   const category = settings.categories.find((c) => c.id === cost.categoryId);
   const paidPct = marketPkr > 0 ? Math.min(100, (paidPkr / marketPkr) * 100) : 0;
   const dimmed = !cost.included || expired || cost.archived;
+  const nextDue = costNextDue(cost);
 
   const meta = [
     category?.name,
-    cost.dueDate ? `Due ${formatShortDate(cost.dueDate)}` : null,
+    nextDue ? `Due ${formatShortDate(nextDue)}` : null,
     src.subCosts.length ? `${src.subCosts.length} items` : null,
     cost.variants?.length ? `${cost.variants.length} options` : null,
   ].filter(Boolean);
@@ -241,12 +243,12 @@ export function CostsPage() {
       const sorted = visible
         .slice()
         .sort((a, b) =>
-          (a.dueDate ?? a.recurrence?.startDate ?? '9999').localeCompare(
-            b.dueDate ?? b.recurrence?.startDate ?? '9999'
+          (costNextDue(a) ?? a.recurrence?.startDate ?? '9999').localeCompare(
+            costNextDue(b) ?? b.recurrence?.startDate ?? '9999'
           )
         );
       for (const c of sorted) {
-        const d = c.dueDate ?? c.recurrence?.startDate ?? c.temporary?.start;
+        const d = costNextDue(c) ?? c.recurrence?.startDate ?? c.temporary?.start;
         const key = d ? d.slice(0, 7) : 'none';
         const name = d ? formatMonthYear(d) : 'No date yet';
         if (!map.has(key)) map.set(key, { id: key, name, costs: [] });

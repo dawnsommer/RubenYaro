@@ -14,6 +14,7 @@ import {
   costMaybeExtra,
   costSource,
   costTotal,
+  costDueParts,
   getActivePlanCosts,
   selectGapPkr,
   selectPlanTotalPkr,
@@ -144,12 +145,12 @@ export function PlannerPage() {
       const mIso = format(mDate, 'yyyy-MM-dd');
 
       // Scheduled costs due up to mIso, or evenly distributed if unscheduled
-      const scheduledUpTo = active
-        .filter((c) => c.dueDate && c.dueDate <= mIso)
-        .reduce((s, c) => s + costTotal(c, settings), 0);
-      const unscheduledTotal = active
-        .filter((c) => !c.dueDate)
-        .reduce((s, c) => s + costTotal(c, settings), 0);
+      // items with their own due date count on that date (costDueParts)
+      const parts = active.flatMap((c) => costDueParts(c, settings));
+      const scheduledUpTo = parts
+        .filter((p) => p.date && p.date <= mIso)
+        .reduce((s, p) => s + p.pkr, 0);
+      const unscheduledTotal = parts.filter((p) => !p.date).reduce((s, p) => s + p.pkr, 0);
       const cumCost = Math.min(
         totalRemaining,
         scheduledUpTo + (unscheduledTotal * i) / count

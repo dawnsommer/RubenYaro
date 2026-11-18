@@ -6,9 +6,9 @@
 |---|---|
 | Project | RubenYaro — USMLE cost + task planner, static SPA on GitHub Pages |
 | Stack | Vite · React 18 · TS strict · Tailwind v4 · Zustand(persist) · HashRouter · recharts · dnd-kit · cmdk · date-fns · vitest |
-| Current checkpoint | **R3 v2.1 — Google sync, Inheritance page, new Home hero** |
-| Last updated | 2026-11-18 · by: Claude Code (S16 · R3) |
-| Build status | green (`npm run build && npm test` — 5 test files, 30 tests pass) · v2.1.0 live; v2.1.1 committed |
+| Current checkpoint | **R4 v2.2 — simpler cost editor, Home totals, item due dates** |
+| Last updated | 2026-11-18 · by: Claude Code (S17 · R4) |
+| Build status | green (`npm run build && npm test` — 5 test files, 31 tests pass) · v2.1.1 live; v2.2.0 committed |
 | Live URL | https://dawnsommer.github.io/RubenYaro/ |
 
 ## 2. Checkpoints  (`[ ]` todo · `[~]` in progress · `[x]` done)
@@ -29,12 +29,13 @@ Do them **in order**. One checkpoint ≈ one chat. Don't start the next until "D
 | CP10 | [x] | Settings + ⌘K + privacy + PWA | §6.6, §6.7, §8, §9 | All settings sections; palette; shortcuts; privacy blur; snapshots; backup nudge; offline PWA |
 | CP11 | [x] | QA + polish + release | §11 | Tests green, Lighthouse ≥90/95, a11y pass, README usage, tagged v1.0.0 |
 | R2 | [x] | v2 redesign (theme, shell, inline cost editor) | D16–D19 | Build/tests green; no side drawers; Costs edit inline; multi-agent files in place |
-| R3 | [x] | Google sync · Inheritance page · Home hero · app icon | D20–D24 | Build/tests green; sync works on the live site; inheritance maths tested |
+| R3 | [x] | Google sync · Inheritance page · Home hero · app icon | D20–D25 | Build/tests green; sync works on the live site; inheritance maths tested |
+| R4 | [x] | Simpler cost editor · Home: Total cost + Spare boxes · sub-cost due dates (schema v4) | D26–D28 | Build/tests green; checked on mobile + desktop |
 
 ## 3. Active work  (only the current checkpoint — overwrite each session)
-- **Goal:** R3 shipped locally as `v2.1.0` (push = deploy; user decides).
+- **Goal:** R4 committed as `v2.2.0` (push = deploy; user decides).
 - **Next steps (pick up here):**
-  1. Push `main` → Pages deploys. On the live site: Settings → Data & backup → Import `private/my-data.json` (Merge) to add the missing personal costs (loan returns, job payment, a Lifestyle item) and the inheritance plan; then Settings → Sync → Sign in.
+  1. Push `main` → Pages deploys. Personal data is already in the user's live app (imported S16); user still to sign in (Settings → Sync) and export a backup.
   2. Worker allow-list now includes `rubenyaro` (added by the user in Cloudflare, verified: `/oauth/start?app_id=rubenyaro…` → 302 to Google). Sign-in is direct only (D25).
   3. User plans to: export JSON + sync to Google, then **reset the app** so someone else can use it. Reset signs out of sync first (so the Google copy is never overwritten with an empty app).
   4. Installments in the user's plan add up to 12.6M vs the 11.6M estate — the page flags it; user to confirm the numbers.
@@ -67,13 +68,17 @@ Do them **in order**. One checkpoint ≈ one chat. Don't start the next until "D
 - D23 Home hero rebuilt (`dashboard/PlanHero.tsx`): verdict, then After-tax and Market lenses side by side (each: spare/short + Total plan), paid/to-pay/spare bar, small detail grid. Costs summary + Money page also show Total plan after tax **and** at market.
 - D24 App icon = violet squircle, white R, gold coin (`public/icon.svg`, PNGs 180/192/512, `BrandMark.tsx`). Rate pill has a convert icon and the rate modal has a Quick convert. Shared-origin safety: SW only deletes `rubenyaro-` caches; Update & Reload only unregisters our own SW scope.
 - D25 Supersedes the borrowing part of D22: RubenYaro signs in directly with its own `app_id=rubenyaro` (now on the Worker allow-list). It no longer reads Thunder tracker / ThunderShadow sessions.
+- D26 Cost editor (supersedes the editor layout of D16+): one status control (In plan / Maybe / Left out) maps to `included`+`maybe`; category/phase/priority/due are pills that open native pickers; items use a status chip that cycles Counts → Maybe → Off; the payment form only opens on "Record payment"; "Estimate" lives in More options.
+- D27 Home hero shows two boxes: **Total cost** (market, after-tax under it) and **Spare after everything** (market, with the after-tax spare in the same box). The verdict line still uses after tax.
+- D28 Schema v4: `SubCost.dueDate?`. A cost's due = earliest of its own date and its counted items' dates (`costNextDue`); `costDueParts` splits a cost by date for the planner. Migration keeps only valid yyyy-mm-dd strings.
 
 ## 5. Session log (keep last 3; compress older into §6 as one line; sign with agent name)
+- **S17 · 2026-11-18 · Claude Code — R4** — Cost editor simplified (name+amount, In plan/Maybe/Left out, chip row for due/category/phase/priority, items with status chip + own due date, payment form behind a button, estimate moved to More). Home hero = Total cost + Spare after everything (after tax inside). Sub-cost `dueDate` (schema v4) feeds next-due, status, month grouping, planner cash flow. Compact `MoneyInput` = one currency chip. v2.2.0.
 - **S16 · 2026-11-18 · Claude Code — R3** — (v2.1.1: direct sign-in only) Google sync (shared Worker / borrowed Thunder sign-in), Inheritance planner page, Home hero rebuilt (after-tax + market side by side), Lifestyle category, app icon + PNGs, rate-pill convert icon + quick convert, shared-origin cache fix, v2.1.0.
 - **S15 · 2026-11-18 · Claude Code — R2 redesign** — Multi-agent setup (AGENTS/CLAUDE/GEMINI), new theme + TopBar/BottomNav shell, inline `CostEditor` replaces cost drawer, simplified Home + Costs, decluttered Tasks rows, Sheet → centred modal, v2.0.0.
-- **S14 · 2026-11-18 · Versioned Deploy** — Added build-time `version.json` manifest, `src/lib/version.ts`, network-first HTML caching in `sw.js`, and one-click "Update & Reload App" button in Settings.
 
 ## 6. History (one line per old session)
+- S14 · Versioned deploy: `version.json`, network-first HTML in `sw.js`, Update & Reload button.
 - **S13 · 2026-11-18 · Redesign** — Simplified UI & mobile UX, pinned tasks at top of Dashboard, manual task sorting + pin buttons, dual Market + `×300` after-tax rate display, top live-rate refresh button, and added `Visa Interview` (₨60k).
 - **S12 · 2026-11-18 · CP11** — Code-split bundle, README usage guide, 27 tests + strict TS, tagged `v1.0.0`.
 - **S11 · 2026-11-18 · CP10** — Built `SettingsPage.tsx` (6 sections, JSON import/merge, snapshots, backup nudge, RESET), `CommandPalette.tsx` (`⌘K` + shortcuts), and offline PWA (`manifest.webmanifest` + `sw.js`).

@@ -503,6 +503,7 @@ export const useStore = create<RubenYaroStore>()(
           order: sub.order ?? target.subCosts.length,
           included: sub.included ?? true,
           maybe: sub.maybe ?? false,
+          dueDate: sub.dueDate,
         };
         set((state) => ({
           costs: state.costs.map((c) =>

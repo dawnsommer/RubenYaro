@@ -226,13 +226,41 @@ export function costStatus(
   if (total > 0 && paid >= total - 0.5) return 'paid';
   if (paid > 0) return 'partial';
 
-  if (cost.dueDate) {
-    if (cost.dueDate < todayIso) return 'overdue';
-    const diffMs = Date.parse(cost.dueDate) - Date.parse(todayIso);
+  const due = costNextDue(cost);
+  if (due) {
+    if (due < todayIso) return 'overdue';
+    const diffMs = Date.parse(due) - Date.parse(todayIso);
     const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
     if (diffDays >= 0 && diffDays <= 14) return 'due_soon';
   }
   return 'planned';
+}
+
+/**
+ * Earliest due date of a cost: its own date or any counted item's date (items can be due separately).
+ */
+export function costNextDue(cost: Cost): string | undefined {
+  const dates = [
+    cost.dueDate,
+    ...costSource(cost)
+      .subCosts.filter((s) => s.included && !s.maybe)
+      .map((s) => s.dueDate),
+  ].filter((d): d is string => Boolean(d));
+  return dates.length ? dates.sort()[0] : undefined;
+}
+
+/**
+ * A cost split by when its money is due (PKR, at the cost's conversion): counted items with their own
+ * date are separate parts; everything else falls on the cost's due date (or undefined = unscheduled).
+ */
+export function costDueParts(cost: Cost, settings: Settings): { date?: string; pkr: number }[] {
+  const total = costTotal(cost, settings);
+  const occ = cost.recurrence?.occurrences ?? 1;
+  const dated = costSource(cost).subCosts.filter((s) => s.included && !s.maybe && s.dueDate);
+  const parts = dated.map((s) => ({ date: s.dueDate, pkr: subCostTotalPkr(cost, s, settings) * occ }));
+  const rest = total - parts.reduce((a, p) => a + p.pkr, 0);
+  if (rest > 0.5 || parts.length === 0) parts.push({ date: cost.dueDate, pkr: Math.max(0, rest) });
+  return parts;
 }
 
 /**

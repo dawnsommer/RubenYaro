@@ -9,6 +9,7 @@ import {
   costMarketPkr,
   costNativeUsd,
   costStatus,
+  costNextDue,
   getActivePlanCosts,
   selectPlanTotalEffectivePkr,
   selectPlanTotalMarketPkr,
@@ -78,9 +79,11 @@ export function DashboardPage() {
       getActivePlanCosts(costs)
         .filter((c) => (includeMaybes || !c.maybe) && costStatus(c, transactions, accounts, settings) !== 'paid')
         .sort((a, b) => {
-          if (a.dueDate && b.dueDate) return a.dueDate.localeCompare(b.dueDate);
-          if (a.dueDate) return -1;
-          if (b.dueDate) return 1;
+          const da = costNextDue(a);
+          const db = costNextDue(b);
+          if (da && db) return da.localeCompare(db);
+          if (da) return -1;
+          if (db) return 1;
           return a.order - b.order;
         })
         .slice(0, 6),
@@ -200,7 +203,7 @@ export function DashboardPage() {
                           {c.maybe && <Chip variant="maybe">Maybe</Chip>}
                         </span>
                         <span className="block text-[11px] text-[var(--text-muted)]">
-                          {c.dueDate ? `Due ${formatShortDate(c.dueDate)}` : cat?.name}
+                          {costNextDue(c) ? `Due ${formatShortDate(costNextDue(c)!)}` : cat?.name}
                         </span>
                       </span>
                       {status !== 'planned' && (

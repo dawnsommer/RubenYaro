@@ -1,7 +1,7 @@
-import { ReactNode } from 'react';
-import { ShieldCheck, TriangleAlert } from 'lucide-react';
-import { Amount } from '../../components/ui';
-import type { Settings } from '../../types';
+import { ReactNode } from "react";
+import { ShieldCheck, TriangleAlert } from "lucide-react";
+import { Amount } from "../../components/ui";
+import type { Settings } from "../../types";
 
 export interface PlanHeroProps {
   settings: Settings;
@@ -16,53 +16,69 @@ export interface PlanHeroProps {
   usdShare: number; // $ amount of the plan that is priced in USD
 }
 
-/** One way of looking at the plan (after-tax card rate, or market rate). */
-function Lens({
-  title,
-  rate,
-  gap,
-  plan,
-  primary,
+/** Big number: compact on phones so the two boxes fit side by side. */
+function Big({
+  pkr,
+  prefix,
+  className = "",
 }: {
-  title: string;
-  rate: string;
-  gap: number;
-  plan: number;
-  primary?: boolean;
+  pkr: number;
+  prefix?: string;
+  className?: string;
 }) {
-  const ok = gap >= 0;
+  return (
+    <p
+      className={`text-[26px] sm:text-[38px] leading-none font-semibold tracking-[-0.04em] num ${className}`}
+    >
+      <Amount
+        pkr={pkr}
+        prefix={prefix}
+        compact
+        className="!text-inherit sm:!hidden"
+      />
+      <Amount
+        pkr={pkr}
+        prefix={prefix}
+        className="!text-inherit !hidden sm:!inline-flex"
+      />
+    </p>
+  );
+}
+
+function Box({
+  title,
+  aside,
+  children,
+  tint,
+}: {
+  title: ReactNode;
+  aside?: ReactNode;
+  children: ReactNode;
+  tint?: string;
+}) {
   return (
     <div
-      className={`rounded-[18px] p-4 sm:p-5 ${
-        primary ? 'bg-[var(--surface)] shadow-[var(--shadow-sm)] border border-[var(--border)]' : 'bg-[var(--surface-2)]/70'
-      }`}
+      className="rounded-[18px] p-4 sm:p-5 bg-[var(--surface)] shadow-[var(--shadow-sm)] border border-[var(--border)] min-w-0"
+      style={
+        tint
+          ? {
+              backgroundImage: `linear-gradient(160deg, ${tint}, transparent 70%)`,
+            }
+          : undefined
+      }
     >
-      <div className="flex flex-wrap items-center justify-between gap-x-2">
-        <p className="text-[12px] font-semibold text-[var(--text)] whitespace-nowrap">{title}</p>
-        <span className="text-[11px] num text-[var(--text-faint)] whitespace-nowrap">{rate}</span>
+      <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-0.5">
+        <p className="text-[12px] font-semibold text-[var(--text-muted)] whitespace-nowrap">
+          {title}
+        </p>
+        {aside}
       </div>
-      <p
-        className={`mt-2 text-[26px] sm:text-[34px] leading-none font-semibold tracking-[-0.04em] num ${
-          ok ? 'text-[var(--positive)]' : 'text-[var(--negative)]'
-        }`}
-      >
-        {/* compact on phones so two lenses fit side by side */}
-        <Amount pkr={Math.abs(gap)} prefix={ok ? '+' : '−'} compact className="!text-inherit sm:!hidden" />
-        <Amount pkr={Math.abs(gap)} prefix={ok ? '+' : '−'} className="!text-inherit !hidden sm:!inline-flex" />
-      </p>
-      <p className="mt-1.5 text-xs text-[var(--text-muted)]">{ok ? 'spare after everything' : 'short'}</p>
-      <div className="mt-3 pt-3 border-t border-[var(--border)] flex flex-wrap items-baseline justify-between gap-x-2 gap-y-0.5">
-        <span className="text-[11px] font-medium uppercase tracking-[0.06em] text-[var(--text-faint)] whitespace-nowrap">
-          Total plan
-        </span>
-        <span className="text-sm font-semibold num">
-          <Amount pkr={plan} compact className="sm:!hidden" />
-          <Amount pkr={plan} className="!hidden sm:!inline-flex" />
-        </span>
-      </div>
+      <div className="mt-2.5">{children}</div>
     </div>
   );
 }
+
+const sign = (n: number) => (n >= 0 ? "+" : "−");
 
 function Detail({ label, children }: { label: string; children: ReactNode }) {
   return (
@@ -79,6 +95,7 @@ export function PlanHero(p: PlanHeroProps) {
   const gapCard = p.fundsPkr - leftCard;
   const gapMarket = p.fundsPkr - leftMarket;
   const ok = gapCard >= 0;
+  const okMarket = gapMarket >= 0;
 
   // bar: paid | still to pay | spare — on the scale of whichever is bigger, money+paid or plan
   const scale = Math.max(p.planCardPkr, p.fundsPkr + p.paidPkr, 1);
@@ -91,7 +108,10 @@ export function PlanHero(p: PlanHeroProps) {
     <section className="card relative overflow-hidden p-4 sm:p-6">
       <div
         className="pointer-events-none absolute -top-24 -right-24 w-72 h-72 rounded-full opacity-[0.14] blur-3xl"
-        style={{ background: 'linear-gradient(135deg, var(--hero-from), var(--hero-to))' }}
+        style={{
+          background:
+            "linear-gradient(135deg, var(--hero-from), var(--hero-to))",
+        }}
       />
       <div className="relative">
         {/* verdict */}
@@ -99,17 +119,26 @@ export function PlanHero(p: PlanHeroProps) {
           <div className="flex items-center gap-2.5">
             <span
               className={`w-9 h-9 rounded-[12px] grid place-items-center ${
-                ok ? 'bg-[var(--positive-soft)] text-[var(--positive)]' : 'bg-[var(--negative-soft)] text-[var(--negative)]'
+                ok
+                  ? "bg-[var(--positive-soft)] text-[var(--positive)]"
+                  : "bg-[var(--negative-soft)] text-[var(--negative)]"
               }`}
             >
-              {ok ? <ShieldCheck className="w-5 h-5" /> : <TriangleAlert className="w-5 h-5" />}
+              {ok ? (
+                <ShieldCheck className="w-5 h-5" />
+              ) : (
+                <TriangleAlert className="w-5 h-5" />
+              )}
             </span>
             <div>
               <p className="text-[15px] font-semibold tracking-[-0.01em]">
-                {ok ? 'Your money covers the plan' : 'Your money doesn’t cover the plan yet'}
+                {ok
+                  ? "Your money covers the plan"
+                  : "Your money doesn’t cover the plan yet"}
               </p>
               <p className="text-xs text-[var(--text-muted)]">
-                {p.costCount} costs · {p.includeMaybes ? 'including maybes' : 'confirmed only'}
+                {p.includeMaybes ? "Including maybes" : "Confirmed costs only"}{" "}
+                · after tax
               </p>
             </div>
           </div>
@@ -121,50 +150,107 @@ export function PlanHero(p: PlanHeroProps) {
                 onClick={() => v !== p.includeMaybes && p.onToggleMaybes()}
                 className={`h-7 px-3 rounded-full transition-colors cursor-pointer ${
                   p.includeMaybes === v
-                    ? 'bg-[var(--surface)] text-[var(--text)] shadow-[var(--shadow-sm)]'
-                    : 'text-[var(--text-muted)] hover:text-[var(--text)]'
+                    ? "bg-[var(--surface)] text-[var(--text)] shadow-[var(--shadow-sm)]"
+                    : "text-[var(--text-muted)] hover:text-[var(--text)]"
                 }`}
               >
-                {v ? '+ Maybes' : 'Confirmed'}
+                {v ? "+ Maybes" : "Confirmed"}
               </button>
             ))}
           </div>
         </div>
 
-        {/* the two views, side by side */}
+        {/* the two numbers that matter */}
         <div className="mt-4 grid grid-cols-2 gap-2.5 sm:gap-3">
-          <Lens
-            primary
-            title="After tax"
-            rate={`₨${p.settings.rates.effective}/$`}
-            gap={gapCard}
-            plan={p.planCardPkr}
-          />
-          <Lens
-            title="At market"
-            rate={`₨${p.settings.rates.market.toFixed(1)}/$`}
-            gap={gapMarket}
-            plan={p.planMarketPkr}
-          />
+          <Box
+            title="Total cost"
+            aside={
+              <span className="max-sm:hidden text-[11px] num text-[var(--text-faint)] whitespace-nowrap">
+                {p.costCount} costs
+              </span>
+            }
+          >
+            <Big pkr={p.planMarketPkr} />
+            <p className="mt-2 text-xs text-[var(--text-muted)] num">
+              <span className="whitespace-nowrap">after tax </span>
+              <Amount
+                pkr={p.planCardPkr}
+                compact
+                className="font-semibold !text-[var(--text)]"
+              />
+            </p>
+          </Box>
+          <Box
+            title={
+              <>
+                <span className="sm:hidden">Spare after all</span>
+                <span className="max-sm:hidden">Spare after everything</span>
+              </>
+            }
+            tint={okMarket ? "var(--positive-soft)" : "var(--negative-soft)"}
+          >
+            <Big
+              pkr={Math.abs(gapMarket)}
+              prefix={sign(gapMarket)}
+              className={
+                okMarket ? "text-[var(--positive)]" : "text-[var(--negative)]"
+              }
+            />
+            <div className="mt-2 pt-2 border-t border-[var(--border)] flex flex-wrap items-baseline justify-between gap-x-2">
+              <span className="text-xs text-[var(--text-muted)] whitespace-nowrap">
+                after tax
+              </span>
+              <span
+                className={`text-[15px] sm:text-lg font-semibold num tracking-[-0.02em] ${
+                  ok ? "text-[var(--positive)]" : "text-[var(--negative)]"
+                }`}
+              >
+                <Amount
+                  pkr={Math.abs(gapCard)}
+                  prefix={sign(gapCard)}
+                  compact
+                  className="!text-inherit"
+                />
+              </span>
+            </div>
+          </Box>
         </div>
+        <p className="mt-2 text-[11px] text-[var(--text-faint)] num">
+          Market ₨{p.settings.rates.market.toFixed(1)}/$ · after tax ₨
+          {p.settings.rates.effective}/$ on dollar costs
+        </p>
 
         {/* bar */}
         <div className="mt-5">
           <div className="h-2.5 rounded-full bg-[var(--surface-3)] overflow-hidden flex">
-            <div className="bg-[var(--positive)]" style={{ width: `${paidW}%` }} title="Paid" />
-            <div className="bg-[var(--accent)]" style={{ width: `${leftW}%` }} title="Still to pay (after tax)" />
+            <div
+              className="bg-[var(--positive)]"
+              style={{ width: `${paidW}%` }}
+              title="Paid"
+            />
+            <div
+              className="bg-[var(--accent)]"
+              style={{ width: `${leftW}%` }}
+              title="Still to pay (after tax)"
+            />
             {shortW > 0 && (
               <div
                 className="bg-[var(--negative)]"
                 style={{
                   width: `${shortW}%`,
                   backgroundImage:
-                    'repeating-linear-gradient(45deg, transparent 0 4px, rgba(255,255,255,.35) 4px 8px)',
+                    "repeating-linear-gradient(45deg, transparent 0 4px, rgba(255,255,255,.35) 4px 8px)",
                 }}
                 title="Short"
               />
             )}
-            {spareW > 0 && <div className="bg-[var(--accent)] opacity-25" style={{ width: `${spareW}%` }} title="Spare" />}
+            {spareW > 0 && (
+              <div
+                className="bg-[var(--accent)] opacity-25"
+                style={{ width: `${spareW}%` }}
+                title="Spare"
+              />
+            )}
           </div>
           <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-[var(--text-muted)]">
             <span className="inline-flex items-center gap-1.5">
@@ -175,11 +261,13 @@ export function PlanHero(p: PlanHeroProps) {
             </span>
             {ok ? (
               <span className="inline-flex items-center gap-1.5">
-                <i className="w-2 h-2 rounded-full bg-[var(--accent)] opacity-25" /> Spare
+                <i className="w-2 h-2 rounded-full bg-[var(--accent)] opacity-25" />{" "}
+                Spare
               </span>
             ) : (
               <span className="inline-flex items-center gap-1.5">
-                <i className="w-2 h-2 rounded-full bg-[var(--negative)]" /> Short
+                <i className="w-2 h-2 rounded-full bg-[var(--negative)]" />{" "}
+                Short
               </span>
             )}
           </div>
@@ -191,22 +279,42 @@ export function PlanHero(p: PlanHeroProps) {
             <Amount pkr={p.fundsPkr} />
           </Detail>
           <Detail label="Paid so far">
-            <Amount pkr={p.paidPkr} tone={p.paidPkr > 0 ? 'positive' : 'default'} />
+            <Amount
+              pkr={p.paidPkr}
+              tone={p.paidPkr > 0 ? "positive" : "default"}
+            />
           </Detail>
           <Detail label="Left to pay (after tax · market)">
-            <Amount pkr={leftCard} compact /> <span className="text-[var(--text-faint)]">·</span>{' '}
+            <Amount pkr={leftCard} compact />{" "}
+            <span className="text-[var(--text-faint)]">·</span>{" "}
             <Amount pkr={leftMarket} compact tone="muted" />
           </Detail>
-          <Detail label={p.includeMaybes ? 'Maybes (included)' : 'Maybes would add'}>
-            <Amount pkr={p.maybeExtraCardPkr} compact prefix="+" className="!text-[var(--maybe)]" />
+          <Detail
+            label={p.includeMaybes ? "Maybes (included)" : "Maybes would add"}
+          >
+            <Amount
+              pkr={p.maybeExtraCardPkr}
+              compact
+              prefix="+"
+              className="!text-[var(--maybe)]"
+            />
           </Detail>
           {p.usdShare > 0 && (
             <Detail label="Priced in dollars">
-              <Amount pkr={p.usdShare * p.settings.rates.market} usd={p.usdShare} displayCurrency="USD" compact />
+              <Amount
+                pkr={p.usdShare * p.settings.rates.market}
+                usd={p.usdShare}
+                displayCurrency="USD"
+                compact
+              />
             </Detail>
           )}
           <Detail label="Tax on dollar costs">
-            <Amount pkr={Math.max(0, p.planCardPkr - p.planMarketPkr)} compact tone="muted" />
+            <Amount
+              pkr={Math.max(0, p.planCardPkr - p.planMarketPkr)}
+              compact
+              tone="muted"
+            />
           </Detail>
         </div>
       </div>

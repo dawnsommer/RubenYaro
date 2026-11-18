@@ -2,7 +2,9 @@ import { describe, it, expect } from 'vitest';
 import { buildSeededAppData, mergeSeedIntoAppData } from '../../store/seed';
 import {
   accountBalance,
+  costDueParts,
   costMaybeExtra,
+  costNextDue,
   costPaid,
   costStatus,
   costTotal,
@@ -200,5 +202,25 @@ describe('selectors (§4 & §5.4)', () => {
     };
     expect(costTotal(customWithMaybeSub, data.settings)).toBe(30_000);
     expect(costMaybeExtra(customWithMaybeSub, data.settings)).toBe(15_000);
+  });
+
+  it('items can be due on their own date (v4)', () => {
+    const data = buildSeededAppData();
+    const visa = data.costs.find((c) => c.name === 'Visa Interview')!;
+    const [plane, hotel] = visa.subCosts;
+    const cost = {
+      ...visa,
+      dueDate: '2027-03-01',
+      subCosts: [{ ...plane, dueDate: '2027-01-15' }, hotel],
+    };
+    expect(costNextDue(cost)).toBe('2027-01-15');
+    const parts = costDueParts(cost, data.settings);
+    expect(parts).toEqual([
+      { date: '2027-01-15', pkr: 50_000 },
+      { date: '2027-03-01', pkr: 10_000 },
+    ]);
+    // a maybe item's date doesn't pull the cost earlier
+    const maybeEarly = { ...cost, subCosts: [{ ...hotel, maybe: true, dueDate: '2026-12-01' }, plane] };
+    expect(costNextDue(maybeEarly)).toBe('2027-03-01');
   });
 });

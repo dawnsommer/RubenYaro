@@ -1,29 +1,53 @@
-import { addWeeks, addMonths, addYears, format, parseISO, isValid, differenceInCalendarDays } from 'date-fns';
-import { Recurrence } from '../types';
+import {
+  addWeeks,
+  addMonths,
+  addYears,
+  format,
+  parseISO,
+  isValid,
+  differenceInCalendarDays,
+} from "date-fns";
+import { Recurrence } from "../types";
 
 export function formatShortDate(isoDate?: string | null): string {
-  if (!isoDate) return '';
+  if (!isoDate) return "";
   try {
     const d = parseISO(isoDate);
     if (!isValid(d)) return isoDate;
-    return format(d, 'd MMM yyyy');
+    return format(d, "d MMM yyyy");
   } catch {
     return isoDate;
   }
 }
 
+/** "5 Dec" — the year only when it isn't this year. For tight spots like item rows. */
+export function formatDayMonth(isoDate?: string | null): string {
+  if (!isoDate) return "";
+  const d = new Date(`${isoDate}T00:00:00`);
+  if (Number.isNaN(d.getTime())) return "";
+  const sameYear = d.getFullYear() === new Date().getFullYear();
+  return d.toLocaleDateString("en-GB", {
+    day: "numeric",
+    month: "short",
+    ...(sameYear ? {} : { year: "2-digit" }),
+  });
+}
+
 export function formatMonthYear(isoDate?: string | null): string {
-  if (!isoDate) return 'No due date';
+  if (!isoDate) return "No due date";
   try {
     const d = parseISO(isoDate);
-    if (!isValid(d)) return 'No due date';
-    return format(d, 'MMMM yyyy');
+    if (!isValid(d)) return "No due date";
+    return format(d, "MMMM yyyy");
   } catch {
-    return 'No due date';
+    return "No due date";
   }
 }
 
-export function daysUntil(isoDate: string, todayIso = new Date().toISOString().slice(0, 10)): number {
+export function daysUntil(
+  isoDate: string,
+  todayIso = new Date().toISOString().slice(0, 10),
+): number {
   try {
     const target = parseISO(isoDate);
     const today = parseISO(todayIso);
@@ -50,11 +74,11 @@ export function generateRecurrenceDates(rec: Recurrence): string[] {
   for (let i = 0; i < count; i++) {
     let d = base;
     if (i > 0) {
-      if (rec.frequency === 'weekly') d = addWeeks(base, i * step);
-      else if (rec.frequency === 'monthly') d = addMonths(base, i * step);
+      if (rec.frequency === "weekly") d = addWeeks(base, i * step);
+      else if (rec.frequency === "monthly") d = addMonths(base, i * step);
       else d = addYears(base, i * step);
     }
-    dates.push(format(d, 'yyyy-MM-dd'));
+    dates.push(format(d, "yyyy-MM-dd"));
   }
 
   return dates;

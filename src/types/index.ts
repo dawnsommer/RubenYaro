@@ -72,7 +72,10 @@ export interface CostItemBase {
   note?: string; url?: string;
 }
 
-export interface SubCost extends CostItemBase { order: number; included: boolean; maybe: boolean }
+export interface SubCost extends CostItemBase {
+  order: number; included: boolean; maybe: boolean;
+  dueDate?: string;                          // v4: an item can be due on its own date (else the cost's)
+}
 
 // Alternative ways to pay for the same thing, only ONE active (e.g. Flights: "Round trip" vs "Separate one-ways")
 export interface CostVariant {

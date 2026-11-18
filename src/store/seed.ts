@@ -28,6 +28,7 @@ export interface SeedSubCostInput {
   included?: boolean;
   maybe?: boolean;
   verify?: boolean;
+  dueDate?: string;
   note?: string;
   url?: string;
 }
@@ -174,6 +175,7 @@ function mapSubCost(sc: SeedSubCostInput, idx: number): SubCost {
     order: idx,
     included: sc.included ?? true,
     maybe: sc.maybe ?? false,
+    dueDate: sc.dueDate,
   };
 }
 
