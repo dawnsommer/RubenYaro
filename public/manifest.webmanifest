@@ -1,0 +1,17 @@
+{
+  "name": "RubenYaro — USMLE Cost & Task Planner",
+  "short_name": "RubenYaro",
+  "description": "Local-first USMLE journey cost, multi-currency budget, and task planner.",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#F7F7F5",
+  "theme_color": "#4F46E5",
+  "icons": [
+    {
+      "src": "icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
