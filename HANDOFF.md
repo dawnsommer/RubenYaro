@@ -8,7 +8,7 @@
 | Stack | Vite · React 18 · TS strict · Tailwind v4 · Zustand(persist) · HashRouter · recharts · dnd-kit · cmdk · date-fns · vitest |
 | Current checkpoint | **All checkpoints complete (CP0–CP11 + Redesign + Versioned Deploy `v1.1.0`)** |
 | Last updated | 2026-11-18 · by: v1.1.0 redesign & deploy session |
-| Build status | green (`npm run build && npm test && npm run lint` — 5 test files, 27 tests pass) |
+| Build status | green (`npm run build && npm test && npm run lint` — 4 test files, 26 tests pass) |
 | Live URL | https://dawnsommer.github.io/RubenYaro/ |
 
 ## 2. Checkpoints  (`[ ]` todo · `[~]` in progress · `[x]` done)
@@ -74,7 +74,7 @@ Do them **in order**. One checkpoint ≈ one chat. Don't start the next until "D
 - —
 
 ## 8. File map (update when adding top-level modules)
-`docs/DESIGN.md` spec · `docs/seed.json` starter data · `private/my-data.json` personal data (gitignored) · `docs/mockup/index.html` visual ref · `public/{sw.js,manifest.webmanifest,icon.svg}` · `src/types` · `src/lib` (currency, rates, format, parseAmount, dates, csv, version) · `src/store` (useStore, selectors, migrations, seed) · `src/components/{ui,layout}` · `src/features/{dashboard,costs,accounts,tasks,planner,settings}`
+`docs/DESIGN.md` spec · `docs/seed.json` starter data · `private/my-data.json` personal data (gitignored) · `public/{sw.js,manifest.webmanifest,icon.svg}` · `src/types` · `src/lib` (currency, rates, format, parseAmount, dates, csv, version) · `src/store` (useStore, selectors, migrations, seed) · `src/components/{ui,layout}` · `src/features/{dashboard,costs,accounts,tasks,planner,settings}`
 
 ---
 ## PROTOCOL (mandatory for every chat)
