@@ -3,8 +3,8 @@
  *
  * - Sign-in goes through the shared Cloudflare Worker (it keeps the Google refresh token). This page keeps
  *   only the Worker session and a short-lived Drive access token. Never log or export either.
- * - All dawnsommer.github.io apps share one localStorage, so an existing ThunderShadow or Thunder tracker
- *   sign-in in this browser is reused (read-only: we never write or clear their keys).
+ * - RubenYaro has its own sign-in (`app_id=rubenyaro` on the Worker's allow-list); it never reads or
+ *   touches the Thunder tracker / ThunderShadow sessions that share this origin.
  * - Data = one JSON file `rubenyaro-state.json` in the Drive appDataFolder (private to these apps).
  * - Local-first: every edit saves to this browser first; a sync runs ~5 s after you stop editing
  *   (at most 30 s), when you leave the page, and when you come back (at most every 2 min).
@@ -40,11 +40,6 @@ const K = {
   token: 'rubenyaro:cloud-token',
   backup: 'rubenyaro:cloud-replaced-copy',
 };
-// Other apps on this origin whose Worker session we may reuse (never written or cleared here).
-const BORROW = [
-  { key: 'cloudflareWorkerSession', name: 'ThunderShadow' },
-  { key: 'thundertracker:cloud-session', name: 'Thunder tracker' },
-];
 
 const get = (k: string) => {
   try {
@@ -72,7 +67,6 @@ export interface CloudStatus {
   sharedFrom: string;
   pending: boolean;
   onSite: boolean;
-  canBorrow: string; // name of an app whose sign-in is available here, or ''
   hasBackup: boolean;
 }
 
@@ -121,7 +115,6 @@ function computeStatus(): CloudStatus {
     sharedFrom: get(K.shared),
     pending: !!get(K.dirty),
     onSite: onSite(),
-    canBorrow: BORROW.find((b) => get(b.key))?.name ?? '',
     hasBackup: !!get(K.backup),
   };
 }
@@ -450,21 +443,6 @@ export function markDirty() {
 
 export async function connect(): Promise<void> {
   if (session()) return syncNow({ manual: true });
-  // Reuse a ThunderShadow / Thunder tracker sign-in from this browser — no redirect needed.
-  for (const b of BORROW) {
-    const s = get(b.key);
-    if (!s) continue;
-    put(K.session, s);
-    put(K.shared, b.name);
-    set('connecting', `Using your ${b.name} Google sign-in…`);
-    try {
-      await getToken(true);
-      return await syncNow({ manual: true });
-    } catch (e) {
-      if (!(e as { auth?: boolean }).auth) throw e;
-      // expired there too → try the next one / a normal sign-in
-    }
-  }
   if (!onSite()) {
     const msg = `Google sign-in works on the published site (${CFG.returnUrl}).`;
     set('error', msg);
@@ -480,7 +458,7 @@ export async function connect(): Promise<void> {
       const body = await res.json().catch(() => ({}));
       const code = String(body.error || body.message || `HTTP ${res.status}`);
       const msg = /return_url|redirect/i.test(code)
-        ? 'Direct Google sign-in isn’t enabled for RubenYaro on the sign-in service yet. Sign in to Thunder tracker (or ThunderShadow) in this same browser, then tap Sign in here — RubenYaro uses that sign-in.'
+        ? `The sign-in service doesn’t have ${CFG.returnUrl} on its allow-list (“${code}”). Your data is safe on this device.`
         : `The sign-in service refused the request (“${code}”). Your data is safe on this device.`;
       set('error', msg);
       throw Object.assign(new Error(msg), { refused: true });

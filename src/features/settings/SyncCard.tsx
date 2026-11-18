@@ -49,7 +49,7 @@ export function SyncCard() {
   return (
     <Card
       title="Google sync"
-      subtitle="Same Google sign-in as Thunder tracker. Your data stays on this device and is copied to a private app folder in your Google Drive, so your phone shows the same data."
+      subtitle="Sign in with Google (same sign-in service as Thunder tracker). Your data stays on this device and is copied to a private app folder in your Google Drive, so your phone shows the same data."
     >
       <div className="space-y-4">
         <div className="flex items-start gap-3 rounded-[14px] bg-[var(--surface-2)] px-4 py-3">
@@ -80,7 +80,7 @@ export function SyncCard() {
           {!cloud.connected ? (
             <Button disabled={busy} onClick={() => run(() => connect())}>
               <Cloud className="w-4 h-4" />
-              {cloud.canBorrow ? `Sign in (use ${cloud.canBorrow})` : 'Sign in with Google'}
+              Sign in with Google
             </Button>
           ) : (
             <>
@@ -96,7 +96,7 @@ export function SyncCard() {
           )}
         </div>
         {err && <p className="text-xs text-[var(--warning)]">{err}</p>}
-        {!cloud.connected && !cloud.onSite && !cloud.canBorrow && (
+        {!cloud.connected && !cloud.onSite && (
           <p className="text-xs text-[var(--text-muted)]">
             Sign-in works on the published app: dawnsommer.github.io/RubenYaro
           </p>

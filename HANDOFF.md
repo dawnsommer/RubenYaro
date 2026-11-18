@@ -8,7 +8,7 @@
 | Stack | Vite · React 18 · TS strict · Tailwind v4 · Zustand(persist) · HashRouter · recharts · dnd-kit · cmdk · date-fns · vitest |
 | Current checkpoint | **R3 v2.1 — Google sync, Inheritance page, new Home hero** |
 | Last updated | 2026-11-18 · by: Claude Code (S16 · R3) |
-| Build status | green (`npm run build && npm test` — 5 test files, 30 tests pass) · v2.1.0 committed, not yet pushed |
+| Build status | green (`npm run build && npm test` — 5 test files, 30 tests pass) · v2.1.0 live; v2.1.1 committed |
 | Live URL | https://dawnsommer.github.io/RubenYaro/ |
 
 ## 2. Checkpoints  (`[ ]` todo · `[~]` in progress · `[x]` done)
@@ -35,11 +35,11 @@ Do them **in order**. One checkpoint ≈ one chat. Don't start the next until "D
 - **Goal:** R3 shipped locally as `v2.1.0` (push = deploy; user decides).
 - **Next steps (pick up here):**
   1. Push `main` → Pages deploys. On the live site: Settings → Data & backup → Import `private/my-data.json` (Merge) to add the missing personal costs (loan returns, job payment, a Lifestyle item) and the inheritance plan; then Settings → Sync → Sign in.
-  2. **Direct Google sign-in for RubenYaro needs the shared Worker allow-list updated** (owner does this in Cloudflare; the Worker source is in `~/Documents/Step Simulator/…/backend/worker.mjs`, `ALLOWED_APPS`): add `"rubenyaro": { returnUrls: ["https://dawnsommer.github.io/RubenYaro/"] }`. Until then sync works by reusing a Thunder tracker / ThunderShadow sign-in in the same browser (probe: `/oauth/start?app_id=rubenyaro…` → `invalid_return_url`).
+  2. Worker allow-list now includes `rubenyaro` (added by the user in Cloudflare, verified: `/oauth/start?app_id=rubenyaro…` → 302 to Google). Sign-in is direct only (D25).
   3. User plans to: export JSON + sync to Google, then **reset the app** so someone else can use it. Reset signs out of sync first (so the Google copy is never overwritten with an empty app).
   4. Installments in the user's plan add up to 12.6M vs the 11.6M estate — the page flags it; user to confirm the numbers.
   5. Optional polish (from R2): Money/Planner inline edit; task edit still uses the `Sheet` modal; a few old input classes in SettingsPage.
-- **Blockers / questions for user:** Worker allow-list (step 2); installment total mismatch (step 4).
+- **Blockers / questions for user:** installment total mismatch (step 4).
 
 ## 4. Decisions (append one line each; never delete)
 - D1 Local-first, no backend; localStorage via Zustand persist. Repo holds no personal data.
@@ -66,9 +66,10 @@ Do them **in order**. One checkpoint ≈ one chat. Don't start the next until "D
 - D22 Google sync (`src/lib/cloud.ts` + `store/cloudBridge.ts`): same shared Cloudflare Worker as Thunder tracker; reuses a ThunderShadow / Thunder tracker session from the shared origin (read-only), else own `app_id=rubenyaro` sign-in. Drive appDataFolder file `rubenyaro-state.json`; whole-document newest-wins, the losing copy kept locally (Settings → Sync → Restore). Auto market-rate refreshes don't count as edits. Keys: `rubenyaro:cloud-*`.
 - D23 Home hero rebuilt (`dashboard/PlanHero.tsx`): verdict, then After-tax and Market lenses side by side (each: spare/short + Total plan), paid/to-pay/spare bar, small detail grid. Costs summary + Money page also show Total plan after tax **and** at market.
 - D24 App icon = violet squircle, white R, gold coin (`public/icon.svg`, PNGs 180/192/512, `BrandMark.tsx`). Rate pill has a convert icon and the rate modal has a Quick convert. Shared-origin safety: SW only deletes `rubenyaro-` caches; Update & Reload only unregisters our own SW scope.
+- D25 Supersedes the borrowing part of D22: RubenYaro signs in directly with its own `app_id=rubenyaro` (now on the Worker allow-list). It no longer reads Thunder tracker / ThunderShadow sessions.
 
 ## 5. Session log (keep last 3; compress older into §6 as one line; sign with agent name)
-- **S16 · 2026-11-18 · Claude Code — R3** — Google sync (shared Worker / borrowed Thunder sign-in), Inheritance planner page, Home hero rebuilt (after-tax + market side by side), Lifestyle category, app icon + PNGs, rate-pill convert icon + quick convert, shared-origin cache fix, v2.1.0.
+- **S16 · 2026-11-18 · Claude Code — R3** — (v2.1.1: direct sign-in only) Google sync (shared Worker / borrowed Thunder sign-in), Inheritance planner page, Home hero rebuilt (after-tax + market side by side), Lifestyle category, app icon + PNGs, rate-pill convert icon + quick convert, shared-origin cache fix, v2.1.0.
 - **S15 · 2026-11-18 · Claude Code — R2 redesign** — Multi-agent setup (AGENTS/CLAUDE/GEMINI), new theme + TopBar/BottomNav shell, inline `CostEditor` replaces cost drawer, simplified Home + Costs, decluttered Tasks rows, Sheet → centred modal, v2.0.0.
 - **S14 · 2026-11-18 · Versioned Deploy** — Added build-time `version.json` manifest, `src/lib/version.ts`, network-first HTML caching in `sw.js`, and one-click "Update & Reload App" button in Settings.
 
