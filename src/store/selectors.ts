@@ -1,0 +1,472 @@
+import {
+  Account,
+  AppData,
+  Cost,
+  CostVariant,
+  Settings,
+  SubCost,
+  Transaction,
+} from '../types';
+import { getConversionContext, moneyToPkr, usdToPkr } from '../lib/currency';
+
+export type CostStatus = 'paid' | 'partial' | 'due_soon' | 'overdue' | 'planned';
+
+/**
+ * `costSource(cost)`: `variants?.length ? activeVariant : cost`
+ */
+export function costSource(cost: Cost): Cost | CostVariant {
+  if (cost.variants && cost.variants.length > 0) {
+    const active = cost.variants.find((v) => v.id === cost.activeVariantId);
+    return active ?? cost.variants[0];
+  }
+  return cost;
+}
+
+export function isCostExpired(cost: Cost, todayIso = new Date().toISOString().slice(0, 10)): boolean {
+  if (!cost.temporary?.end) return false;
+  return cost.temporary.end < todayIso;
+}
+
+/**
+ * `costOccurrenceTotal(cost)` in PKR:
+ * `src = costSource(cost)`; `src.subCosts.length ? Σ(included && !maybe subCosts → PKR) : src.money → PKR`
+ */
+export function costOccurrenceTotal(cost: Cost, settings: Settings): number {
+  const ctx = getConversionContext(settings);
+  const src = costSource(cost);
+  if (src.subCosts && src.subCosts.length > 0) {
+    return src.subCosts
+      .filter((sc) => sc.included && !sc.maybe)
+      .reduce(
+        (sum, sc) =>
+          sum +
+          moneyToPkr(
+            sc.money,
+            ctx,
+            sc.conversionMode ?? cost.conversionMode,
+            sc.tax ?? cost.tax
+          ),
+        0
+      );
+  }
+  return moneyToPkr(src.money, ctx, cost.conversionMode, cost.tax);
+}
+
+/**
+ * `costMaybeExtra(cost)` in PKR:
+ * Σ of included sub-costs with `maybe:true` (multiplied by occurrences if recurring)
+ */
+export function costMaybeExtra(cost: Cost, settings: Settings): number {
+  const ctx = getConversionContext(settings);
+  const src = costSource(cost);
+  if (!src.subCosts || src.subCosts.length === 0) return 0;
+  const occ = cost.recurrence?.occurrences ?? 1;
+  const perOcc = src.subCosts
+    .filter((sc) => sc.included && sc.maybe)
+    .reduce(
+      (sum, sc) =>
+        sum +
+        moneyToPkr(
+          sc.money,
+          ctx,
+          sc.conversionMode ?? cost.conversionMode,
+          sc.tax ?? cost.tax
+        ),
+      0
+    );
+  return perOcc * occ;
+}
+
+/**
+ * `costTotal(cost)` in PKR: occurrence total × (recurrence?.occurrences ?? 1)
+ */
+export function costTotal(cost: Cost, settings: Settings): number {
+  const occ = cost.recurrence?.occurrences ?? 1;
+  return costOccurrenceTotal(cost, settings) * occ;
+}
+
+export function subCostTotalPkr(cost: Cost, sub: SubCost, settings: Settings): number {
+  const ctx = getConversionContext(settings);
+  return moneyToPkr(
+    sub.money,
+    ctx,
+    sub.conversionMode ?? cost.conversionMode,
+    sub.tax ?? cost.tax
+  );
+}
+
+/**
+ * `costPaid(cost)` in PKR (§4 & §5.4):
+ * If payment is from a USD account to a USD cost, payment counts against the cost in native USD
+ * (clears at cost's own conversion mode, no card tax discrepancy).
+ */
+export function costPaid(
+  cost: Cost,
+  transactions: Transaction[],
+  accounts: Account[],
+  settings: Settings
+): number {
+  const ctx = getConversionContext(settings);
+  const src = costSource(cost);
+  const accMap = new Map(accounts.map((a) => [a.id, a]));
+  const payments = transactions.filter((t) => t.type === 'payment' && t.costId === cost.id);
+
+  let totalPkr = 0;
+  for (const p of payments) {
+    const acc = accMap.get(p.accountId);
+    const accCurr = acc?.currency ?? 'PKR';
+    if (accCurr === 'PKR') {
+      totalPkr += p.amount;
+    } else {
+      // USD account paying a cost: if cost is in USD, convert at cost's own mode so $X clears $X of cost
+      if (src.money.currency === 'USD') {
+        totalPkr += moneyToPkr(
+          { amount: p.amount, currency: 'USD' },
+          ctx,
+          cost.conversionMode,
+          cost.tax
+        );
+      } else {
+        totalPkr += usdToPkr(
+          p.amount,
+          'effective',
+          settings.rates.market,
+          settings.rates.effective
+        );
+      }
+    }
+  }
+  return totalPkr;
+}
+
+/**
+ * `costStatus(cost)`:
+ * `paid >= total` -> 'paid'; `paid > 0` -> 'partial'; due <= 14 days -> 'due_soon'; past due -> 'overdue'; else 'planned'
+ */
+export function costStatus(
+  cost: Cost,
+  transactions: Transaction[],
+  accounts: Account[],
+  settings: Settings,
+  todayIso = new Date().toISOString().slice(0, 10)
+): CostStatus {
+  const total = costTotal(cost, settings);
+  const paid = costPaid(cost, transactions, accounts, settings);
+  if (total > 0 && paid >= total - 0.5) return 'paid';
+  if (paid > 0) return 'partial';
+
+  if (cost.dueDate) {
+    if (cost.dueDate < todayIso) return 'overdue';
+    const diffMs = Date.parse(cost.dueDate) - Date.parse(todayIso);
+    const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+    if (diffDays >= 0 && diffDays <= 14) return 'due_soon';
+  }
+  return 'planned';
+}
+
+/**
+ * `accountBalance(acc)` in account's native currency:
+ * opening + deposits − withdrawals − payments ± transfers
+ */
+export function accountBalance(acc: Account, transactions: Transaction[]): number {
+  let bal = acc.openingBalance;
+  for (const tx of transactions) {
+    if (tx.type === 'deposit' && tx.accountId === acc.id) {
+      bal += tx.amount;
+    } else if (
+      (tx.type === 'withdrawal' || tx.type === 'payment') &&
+      tx.accountId === acc.id
+    ) {
+      bal -= tx.amount;
+    } else if (tx.type === 'transfer') {
+      if (tx.accountId === acc.id) {
+        bal -= tx.amount;
+      }
+      if (tx.toAccountId === acc.id) {
+        bal += tx.toAmount ?? tx.amount;
+      }
+    }
+  }
+  return bal;
+}
+
+/**
+ * Value of an account in PKR (§5.4):
+ * - PKR accounts: native
+ * - USD accounts: `usd * M` (holding real dollars -> market rate)
+ */
+export function accountBalancePkr(
+  acc: Account,
+  transactions: Transaction[],
+  settings: Settings
+): number {
+  const native = accountBalance(acc, transactions);
+  if (acc.currency === 'PKR') return native;
+  return native * settings.rates.market;
+}
+
+export function accountReservedPkr(acc: Account, settings: Settings): number {
+  const res = acc.reserved ?? 0;
+  if (acc.currency === 'PKR') return res;
+  return res * settings.rates.market;
+}
+
+/**
+ * `totalFunds` in PKR:
+ * Σ balances of accounts with `includeInTotals && !archived`, minus `reserved`
+ */
+export function selectTotalFundsPkr(data: AppData): number {
+  return data.accounts
+    .filter((a) => a.includeInTotals && !a.archived)
+    .reduce((sum, a) => {
+      const bal = accountBalancePkr(a, data.transactions, data.settings);
+      const res = accountReservedPkr(a, data.settings);
+      return sum + (bal - res);
+    }, 0);
+}
+
+export function selectTotalGrossFundsPkr(data: AppData): number {
+  return data.accounts
+    .filter((a) => a.includeInTotals && !a.archived)
+    .reduce(
+      (sum, a) => sum + accountBalancePkr(a, data.transactions, data.settings),
+      0
+    );
+}
+
+export function selectTotalReservedPkr(data: AppData): number {
+  return data.accounts
+    .filter((a) => a.includeInTotals && !a.archived)
+    .reduce((sum, a) => sum + accountReservedPkr(a, data.settings), 0);
+}
+
+/**
+ * §5.4 Spending power (USD) = USD accounts (available) + PKR accounts (available) / E
+ */
+export function selectSpendingPowerUsd(data: AppData): {
+  spendingPowerUsd: number;
+  realUsdHeld: number;
+  pkrAvailable: number;
+} {
+  const E = data.settings.rates.effective > 0 ? data.settings.rates.effective : 300;
+  let realUsdHeld = 0;
+  let pkrAvailable = 0;
+
+  for (const a of data.accounts) {
+    if (!a.includeInTotals || a.archived) continue;
+    const avail = accountBalance(a, data.transactions) - (a.reserved ?? 0);
+    if (a.currency === 'USD') {
+      realUsdHeld += avail;
+    } else {
+      pkrAvailable += avail;
+    }
+  }
+
+  return {
+    spendingPowerUsd: realUsdHeld + pkrAvailable / E,
+    realUsdHeld,
+    pkrAvailable,
+  };
+}
+
+/**
+ * Active plan costs filter: `included && !archived && !expired`
+ */
+export function getActivePlanCosts(
+  costs: Cost[],
+  todayIso = new Date().toISOString().slice(0, 10)
+): Cost[] {
+  return costs.filter((c) => c.included && !c.archived && !isCostExpired(c, todayIso));
+}
+
+/**
+ * `planTotal` (confirmed) in PKR:
+ * Σ `costTotal` for `included && !archived && !expired && !maybe`
+ */
+export function selectPlanTotalPkr(
+  data: AppData,
+  todayIso = new Date().toISOString().slice(0, 10)
+): number {
+  return getActivePlanCosts(data.costs, todayIso)
+    .filter((c) => !c.maybe)
+    .reduce((sum, c) => sum + costTotal(c, data.settings), 0);
+}
+
+/**
+ * `maybeTotal` in PKR:
+ * Σ `costTotal` of `maybe` costs + Σ `costMaybeExtra` of all active costs
+ */
+export function selectMaybeTotalPkr(
+  data: AppData,
+  todayIso = new Date().toISOString().slice(0, 10)
+): number {
+  const active = getActivePlanCosts(data.costs, todayIso);
+  let total = 0;
+  for (const c of active) {
+    if (c.maybe) {
+      total += costTotal(c, data.settings) + costMaybeExtra(c, data.settings);
+    } else {
+      total += costMaybeExtra(c, data.settings);
+    }
+  }
+  return total;
+}
+
+export function selectPlanWithMaybesPkr(
+  data: AppData,
+  todayIso = new Date().toISOString().slice(0, 10)
+): number {
+  return selectPlanTotalPkr(data, todayIso) + selectMaybeTotalPkr(data, todayIso);
+}
+
+export function selectTotalPaidPkr(
+  data: AppData,
+  includeMaybes = false,
+  todayIso = new Date().toISOString().slice(0, 10)
+): number {
+  return getActivePlanCosts(data.costs, todayIso)
+    .filter((c) => includeMaybes || !c.maybe)
+    .reduce(
+      (sum, c) =>
+        sum + costPaid(c, data.transactions, data.accounts, data.settings),
+      0
+    );
+}
+
+export function selectRemainingPkr(
+  data: AppData,
+  includeMaybes = false,
+  todayIso = new Date().toISOString().slice(0, 10)
+): number {
+  const plan = includeMaybes
+    ? selectPlanWithMaybesPkr(data, todayIso)
+    : selectPlanTotalPkr(data, todayIso);
+  const paid = selectTotalPaidPkr(data, includeMaybes, todayIso);
+  return Math.max(0, plan - paid);
+}
+
+export function selectGapPkr(
+  data: AppData,
+  includeMaybes = false,
+  todayIso = new Date().toISOString().slice(0, 10)
+): number {
+  const funds = selectTotalFundsPkr(data);
+  const rem = selectRemainingPkr(data, includeMaybes, todayIso);
+  return funds - rem;
+}
+
+export function selectCoveragePercent(
+  data: AppData,
+  includeMaybes = false,
+  todayIso = new Date().toISOString().slice(0, 10)
+): number {
+  const plan = includeMaybes
+    ? selectPlanWithMaybesPkr(data, todayIso)
+    : selectPlanTotalPkr(data, todayIso);
+  if (plan <= 0) return 100;
+  const paid = selectTotalPaidPkr(data, includeMaybes, todayIso);
+  const funds = selectTotalFundsPkr(data);
+  return ((paid + funds) / plan) * 100;
+}
+
+/**
+ * `range`: Σ low / Σ high for estimates (fixed costs count same in both)
+ */
+export function selectPlanRangePkr(
+  data: AppData,
+  includeMaybes = false,
+  todayIso = new Date().toISOString().slice(0, 10)
+): { lowPkr: number; highPkr: number; hasRange: boolean } {
+  const ctx = getConversionContext(data.settings);
+  const active = getActivePlanCosts(data.costs, todayIso).filter(
+    (c) => includeMaybes || !c.maybe
+  );
+
+  let lowPkr = 0;
+  let highPkr = 0;
+  let hasRange = false;
+
+  for (const c of active) {
+    const src = costSource(c);
+    const occ = c.recurrence?.occurrences ?? 1;
+    const base = costTotal(c, data.settings);
+    if (src.range && src.subCosts.length === 0) {
+      hasRange = true;
+      const lowM = moneyToPkr(
+        { amount: src.range.low, currency: src.money.currency },
+        ctx,
+        c.conversionMode,
+        c.tax
+      );
+      const highM = moneyToPkr(
+        { amount: src.range.high, currency: src.money.currency },
+        ctx,
+        c.conversionMode,
+        c.tax
+      );
+      lowPkr += lowM * occ;
+      highPkr += highM * occ;
+    } else {
+      lowPkr += base;
+      highPkr += base;
+    }
+    if (includeMaybes && !c.maybe) {
+      const extra = costMaybeExtra(c, data.settings);
+      lowPkr += extra;
+      highPkr += extra;
+    }
+  }
+
+  return { lowPkr, highPkr, hasRange };
+}
+
+/**
+ * Ledger rows for an account with running balance (oldest -> newest, returned newest first)
+ */
+export interface LedgerRow {
+  tx: Transaction;
+  signedAmount: number;
+  runningBalance: number;
+}
+
+export function buildAccountLedger(
+  acc: Account,
+  transactions: Transaction[]
+): LedgerRow[] {
+  const relevant = transactions
+    .filter((t) => t.accountId === acc.id || t.toAccountId === acc.id)
+    .slice()
+    .sort((a, b) => {
+      if (a.date !== b.date) return a.date.localeCompare(b.date);
+      return a.createdAt.localeCompare(b.createdAt);
+    });
+
+  let running = acc.openingBalance;
+  const rows: LedgerRow[] = [];
+
+  for (const tx of relevant) {
+    let delta = 0;
+    if (tx.type === 'deposit' && tx.accountId === acc.id) {
+      delta = tx.amount;
+    } else if (
+      (tx.type === 'withdrawal' || tx.type === 'payment') &&
+      tx.accountId === acc.id
+    ) {
+      delta = -tx.amount;
+    } else if (tx.type === 'transfer') {
+      if (tx.accountId === acc.id) {
+        delta = -tx.amount;
+      } else if (tx.toAccountId === acc.id) {
+        delta = tx.toAmount ?? tx.amount;
+      }
+    }
+    running += delta;
+    rows.push({
+      tx,
+      signedAmount: delta,
+      runningBalance: running,
+    });
+  }
+
+  return rows.reverse();
+}
