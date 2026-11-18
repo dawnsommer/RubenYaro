@@ -1,43 +1,61 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Eye, EyeOff, SunMoon, RefreshCw, Command } from 'lucide-react';
 import { Segmented } from '../ui/Segmented';
 import { Popover } from '../ui/Popover';
 import { Sheet } from '../ui/Sheet';
 import { Button } from '../ui/Button';
+import { useStore } from '../../store/useStore';
+import { fetchLiveMarketRate, formatRelativeRateAge } from '../../lib/rates';
 
 export interface RateBarProps {
-  marketRate?: number;
-  effectiveRate?: number;
-  taxPercent?: number;
-  displayCurrency: 'PKR' | 'USD';
-  onDisplayCurrencyChange: (c: 'PKR' | 'USD') => void;
-  privacyMode: boolean;
-  onTogglePrivacy: () => void;
-  onToggleTheme: () => void;
-  onMarketRateChange?: (rate: number) => void;
-  onEffectiveRateChange?: (rate: number) => void;
-  onTaxPercentChange?: (pct: number) => void;
   onOpenCommandPalette?: () => void;
 }
 
-export function RateBar({
-  marketRate = 281.4,
-  effectiveRate = 300,
-  taxPercent = 5,
-  displayCurrency,
-  onDisplayCurrencyChange,
-  privacyMode,
-  onTogglePrivacy,
-  onToggleTheme,
-  onMarketRateChange,
-  onEffectiveRateChange,
-  onTaxPercentChange,
-  onOpenCommandPalette,
-}: RateBarProps) {
+export function RateBar({ onOpenCommandPalette }: RateBarProps) {
+  const settings = useStore((s) => s.settings);
+  const updateSettings = useStore((s) => s.updateSettings);
+  const updateRates = useStore((s) => s.updateRates);
+
   const [mobileSheetOpen, setMobileSheetOpen] = useState(false);
-  const [draftMarket, setDraftMarket] = useState(String(marketRate));
-  const [draftEffective, setDraftEffective] = useState(String(effectiveRate));
-  const [draftTax, setDraftTax] = useState(String(taxPercent));
+  const [refreshing, setRefreshing] = useState(false);
+  const [offlineFailed, setOfflineFailed] = useState(false);
+
+  const [draftMarket, setDraftMarket] = useState(String(settings.rates.market));
+  const [draftEffective, setDraftEffective] = useState(String(settings.rates.effective));
+  const [draftTax, setDraftTax] = useState(String(settings.defaultTax.value));
+
+  const runLiveRateFetch = async (force = false) => {
+    setRefreshing(true);
+    const res = await fetchLiveMarketRate(useStore.getState().settings.rates, { force });
+    setRefreshing(false);
+    if (res) {
+      setOfflineFailed(false);
+      if (!res.fromCache || force) {
+        updateRates({
+          market: res.rate,
+          marketProvider: res.provider,
+          marketUpdatedAt: res.updatedAt,
+          marketSource: 'auto',
+        });
+      }
+    } else {
+      setOfflineFailed(true);
+    }
+  };
+
+  useEffect(() => {
+    if (settings.rates.marketSource === 'auto') {
+      void runLiveRateFetch(false);
+    }
+  }, []);
+
+  const handleToggleTheme = () => {
+    const isDark = document.documentElement.classList.toggle('dark');
+    updateSettings({ theme: isDark ? 'dark' : 'light' });
+  };
+
+  const ageLabel = formatRelativeRateAge(settings.rates.marketUpdatedAt);
+  const isManual = settings.rates.marketSource === 'manual';
 
   return (
     <>
@@ -49,16 +67,24 @@ export function RateBar({
         <button
           type="button"
           onClick={() => {
-            setDraftMarket(String(marketRate));
-            setDraftEffective(String(effectiveRate));
-            setDraftTax(String(taxPercent));
+            setDraftMarket(String(settings.rates.market));
+            setDraftEffective(String(settings.rates.effective));
+            setDraftTax(String(settings.defaultTax.value));
             setMobileSheetOpen(true);
           }}
           className="sm:hidden inline-flex items-center gap-1.5 rounded-full border border-[var(--border)] px-2.5 py-0.5 text-[11px] font-medium num cursor-pointer"
         >
-          <span className="w-1.5 h-1.5 rounded-full bg-[var(--positive)]" />
+          <span
+            className={`w-1.5 h-1.5 rounded-full ${
+              offlineFailed
+                ? 'bg-[var(--warning)]'
+                : isManual
+                  ? 'bg-[var(--accent)]'
+                  : 'bg-[var(--positive)]'
+            }`}
+          />
           <span>
-            ₨{marketRate.toFixed(1)} · ₨{effectiveRate}
+            ₨{settings.rates.market.toFixed(1)} · ₨{settings.rates.effective}
           </span>
         </button>
 
@@ -69,14 +95,36 @@ export function RateBar({
               <button
                 type="button"
                 onClick={() => {
-                  setDraftMarket(String(marketRate));
+                  setDraftMarket(String(settings.rates.market));
                   toggle();
                 }}
-                className="inline-flex items-center gap-1.5 rounded-full border border-[var(--border)] px-2.5 py-0.5 text-[11px] font-medium num hover:bg-[var(--surface-2)] cursor-pointer"
+                className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-[11px] font-medium num hover:bg-[var(--surface-2)] cursor-pointer ${
+                  offlineFailed
+                    ? 'border-[var(--warning)] text-[var(--warning)]'
+                    : 'border-[var(--border)] text-[var(--text)]'
+                }`}
               >
-                <span className="w-1.5 h-1.5 rounded-full bg-[var(--positive)]" />
-                <span>Live · 1 USD = ₨ {marketRate.toFixed(2)} · 2h ago</span>
-                <RefreshCw className="w-3 h-3 text-[var(--text-muted)]" />
+                <span
+                  className={`w-1.5 h-1.5 rounded-full ${
+                    offlineFailed
+                      ? 'bg-[var(--warning)]'
+                      : isManual
+                        ? 'bg-[var(--accent)]'
+                        : 'bg-[var(--positive)]'
+                  }`}
+                />
+                <span>
+                  {offlineFailed
+                    ? `Offline · ₨ ${settings.rates.market.toFixed(2)} · ${ageLabel}`
+                    : isManual
+                      ? `Manual · 1 USD = ₨ ${settings.rates.market.toFixed(2)}`
+                      : `Live · 1 USD = ₨ ${settings.rates.market.toFixed(2)} · ${ageLabel}`}
+                </span>
+                <RefreshCw
+                  className={`w-3 h-3 text-[var(--text-muted)] ${
+                    refreshing ? 'animate-spin' : ''
+                  }`}
+                />
               </button>
             )}
           >
@@ -85,14 +133,35 @@ export function RateBar({
                 onSubmit={(e) => {
                   e.preventDefault();
                   const val = parseFloat(draftMarket);
-                  if (val > 0) onMarketRateChange?.(val);
+                  if (val > 0) {
+                    updateRates({
+                      market: val,
+                      marketSource: 'manual',
+                      marketUpdatedAt: new Date().toISOString(),
+                    });
+                  }
                   close();
                 }}
-                className="space-y-2"
+                className="space-y-2.5"
               >
-                <label className="block text-xs font-medium text-[var(--text-muted)]">
-                  Market rate (PKR per 1 USD)
-                </label>
+                <div className="flex items-center justify-between">
+                  <label className="block text-xs font-medium text-[var(--text-muted)]">
+                    Market rate (PKR / 1 USD)
+                  </label>
+                  {isManual && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        updateRates({ marketSource: 'auto' });
+                        void runLiveRateFetch(true);
+                        close();
+                      }}
+                      className="text-xs font-medium text-[var(--accent)] hover:underline cursor-pointer"
+                    >
+                      Use live rate
+                    </button>
+                  )}
+                </div>
                 <input
                   type="number"
                   step="0.01"
@@ -102,13 +171,26 @@ export function RateBar({
                   className="w-full rounded-[10px] bg-[var(--surface-2)] border border-[var(--border)] px-3 py-1.5 text-sm num outline-none focus:border-[var(--accent)]"
                   autoFocus
                 />
-                <div className="flex justify-end gap-2 pt-1">
-                  <Button type="button" variant="secondary" size="sm" onClick={close}>
-                    Cancel
+                <div className="flex items-center justify-between gap-2 pt-1">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      void runLiveRateFetch(true);
+                      close();
+                    }}
+                  >
+                    Refresh live
                   </Button>
-                  <Button type="submit" size="sm">
-                    Save
-                  </Button>
+                  <div className="flex gap-2">
+                    <Button type="button" variant="secondary" size="sm" onClick={close}>
+                      Cancel
+                    </Button>
+                    <Button type="submit" size="sm">
+                      Save manual
+                    </Button>
+                  </div>
                 </div>
               </form>
             )}
@@ -119,12 +201,12 @@ export function RateBar({
               <button
                 type="button"
                 onClick={() => {
-                  setDraftEffective(String(effectiveRate));
+                  setDraftEffective(String(settings.rates.effective));
                   toggle();
                 }}
                 className="inline-flex items-center gap-1 rounded-full border border-[var(--border)] px-2.5 py-0.5 text-[11px] font-medium num hover:bg-[var(--surface-2)] cursor-pointer"
               >
-                Card rate ₨ {effectiveRate}
+                Card rate ₨ {settings.rates.effective}
               </button>
             )}
           >
@@ -133,7 +215,7 @@ export function RateBar({
                 onSubmit={(e) => {
                   e.preventDefault();
                   const val = parseFloat(draftEffective);
-                  if (val > 0) onEffectiveRateChange?.(val);
+                  if (val > 0) updateRates({ effective: val });
                   close();
                 }}
                 className="space-y-2"
@@ -167,12 +249,15 @@ export function RateBar({
               <button
                 type="button"
                 onClick={() => {
-                  setDraftTax(String(taxPercent));
+                  setDraftTax(String(settings.defaultTax.value));
                   toggle();
                 }}
                 className="hidden md:inline-flex items-center gap-1 rounded-full border border-[var(--border)] px-2.5 py-0.5 text-[11px] font-medium num hover:bg-[var(--surface-2)] cursor-pointer"
               >
-                Tax {taxPercent}%
+                Tax{' '}
+                {settings.defaultTax.kind === 'percent'
+                  ? `${settings.defaultTax.value}%`
+                  : `₨ ${settings.defaultTax.value}`}
               </button>
             )}
           >
@@ -181,13 +266,17 @@ export function RateBar({
                 onSubmit={(e) => {
                   e.preventDefault();
                   const val = parseFloat(draftTax);
-                  if (val >= 0) onTaxPercentChange?.(val);
+                  if (val >= 0) {
+                    updateSettings({
+                      defaultTax: { ...settings.defaultTax, value: val },
+                    });
+                  }
                   close();
                 }}
                 className="space-y-2"
               >
                 <label className="block text-xs font-medium text-[var(--text-muted)]">
-                  Default tax (%)
+                  Default tax ({settings.defaultTax.kind === 'percent' ? '%' : 'PKR'})
                 </label>
                 <input
                   type="number"
@@ -219,27 +308,31 @@ export function RateBar({
             { value: 'PKR', label: 'PKR' },
             { value: 'USD', label: 'USD' },
           ]}
-          value={displayCurrency}
-          onChange={onDisplayCurrencyChange}
+          value={settings.displayCurrency}
+          onChange={(c) => updateSettings({ displayCurrency: c })}
         />
 
         <button
           type="button"
-          onClick={onTogglePrivacy}
+          onClick={() => updateSettings({ privacyMode: !settings.privacyMode })}
           aria-label="Toggle privacy mode"
           title="Toggle privacy blur (p)"
           className={`inline-flex items-center justify-center rounded-full border border-[var(--border)] w-7 h-7 text-xs cursor-pointer ${
-            privacyMode
+            settings.privacyMode
               ? 'bg-[var(--accent-soft)] text-[var(--accent)]'
               : 'text-[var(--text-muted)] hover:text-[var(--text)]'
           }`}
         >
-          {privacyMode ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+          {settings.privacyMode ? (
+            <EyeOff className="w-3.5 h-3.5" />
+          ) : (
+            <Eye className="w-3.5 h-3.5" />
+          )}
         </button>
 
         <button
           type="button"
-          onClick={onToggleTheme}
+          onClick={handleToggleTheme}
           aria-label="Toggle theme"
           title="Toggle dark/light theme"
           className="inline-flex items-center justify-center rounded-full border border-[var(--border)] w-7 h-7 text-xs text-[var(--text-muted)] hover:text-[var(--text)] cursor-pointer"
@@ -267,9 +360,19 @@ export function RateBar({
               const m = parseFloat(draftMarket);
               const ef = parseFloat(draftEffective);
               const tx = parseFloat(draftTax);
-              if (m > 0) onMarketRateChange?.(m);
-              if (ef > 0) onEffectiveRateChange?.(ef);
-              if (tx >= 0) onTaxPercentChange?.(tx);
+              if (m > 0 && m !== settings.rates.market) {
+                updateRates({
+                  market: m,
+                  marketSource: 'manual',
+                  marketUpdatedAt: new Date().toISOString(),
+                });
+              }
+              if (ef > 0) updateRates({ effective: ef });
+              if (tx >= 0) {
+                updateSettings({
+                  defaultTax: { ...settings.defaultTax, value: tx },
+                });
+              }
               setMobileSheetOpen(false);
             }}
           >
@@ -279,9 +382,21 @@ export function RateBar({
       >
         <div className="space-y-4">
           <div>
-            <label className="block text-xs font-medium text-[var(--text-muted)] mb-1">
-              Market rate (PKR per 1 USD)
-            </label>
+            <div className="flex items-center justify-between mb-1">
+              <label className="block text-xs font-medium text-[var(--text-muted)]">
+                Market rate (PKR per 1 USD)
+              </label>
+              <button
+                type="button"
+                onClick={() => {
+                  updateRates({ marketSource: 'auto' });
+                  void runLiveRateFetch(true);
+                }}
+                className="text-xs text-[var(--accent)] font-medium cursor-pointer"
+              >
+                Use live rate
+              </button>
+            </div>
             <input
               type="number"
               step="0.01"
@@ -304,7 +419,7 @@ export function RateBar({
           </div>
           <div>
             <label className="block text-xs font-medium text-[var(--text-muted)] mb-1">
-              Default tax (%)
+              Default tax ({settings.defaultTax.kind === 'percent' ? '%' : 'PKR'})
             </label>
             <input
               type="number"

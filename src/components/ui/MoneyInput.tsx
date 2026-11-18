@@ -1,49 +1,37 @@
 import { useState, useEffect } from 'react';
 import { Amount } from './Amount';
-
-export interface MoneyValue {
-  amount: number;
-  currency: 'USD' | 'PKR';
-}
+import { parseAmount } from '../../lib/parseAmount';
+import { getConversionContext, moneyToPkr, moneyToUsd } from '../../lib/currency';
+import { useStore } from '../../store/useStore';
+import { ConversionMode, Currency, Money, TaxRule } from '../../types';
 
 export interface MoneyInputProps {
-  value: MoneyValue;
-  onChange: (next: MoneyValue) => void;
-  effectiveRate?: number;
+  value: Money;
+  onChange: (next: Money) => void;
+  conversionMode?: ConversionMode;
+  tax?: TaxRule;
   label?: string;
   placeholder?: string;
   id?: string;
   className?: string;
 }
 
-function quickParse(raw: string): number | null {
-  const cleaned = raw.trim().toLowerCase().replace(/,/g, '');
-  if (!cleaned) return 0;
-  const lakhMatch = cleaned.match(/^(-?\d+(?:\.\d+)?)\s*(?:lakh|lac|l)$/);
-  if (lakhMatch) return parseFloat(lakhMatch[1]) * 100_000;
-  const kMatch = cleaned.match(/^(-?\d+(?:\.\d+)?)\s*k$/);
-  if (kMatch) return parseFloat(kMatch[1]) * 1_000;
-  const mMatch = cleaned.match(/^(-?\d+(?:\.\d+)?)\s*(?:m|mn)$/);
-  if (mMatch) return parseFloat(mMatch[1]) * 1_000_000;
-  const mulMatch = cleaned.match(/^(-?\d+(?:\.\d+)?)\s*\*\s*(-?\d+(?:\.\d+)?)$/);
-  if (mulMatch) return parseFloat(mulMatch[1]) * parseFloat(mulMatch[2]);
-  const num = Number(cleaned);
-  return Number.isFinite(num) ? num : null;
-}
-
 export function MoneyInput({
   value,
   onChange,
-  effectiveRate = 300,
+  conversionMode,
+  tax,
   label,
-  placeholder = '0',
+  placeholder = '0 (e.g. 1.2k, 3 lakh, 450*3)',
   id,
   className = '',
 }: MoneyInputProps) {
+  const settings = useStore((s) => s.settings);
+  const ctx = getConversionContext(settings);
   const [text, setText] = useState<string>(value.amount ? String(value.amount) : '');
 
   useEffect(() => {
-    const parsed = quickParse(text);
+    const parsed = parseAmount(text);
     if (parsed !== value.amount) {
       setText(value.amount ? String(value.amount) : '');
     }
@@ -51,20 +39,39 @@ export function MoneyInput({
 
   const handleTextChange = (nextRaw: string) => {
     setText(nextRaw);
-    const parsed = quickParse(nextRaw);
+    if (!nextRaw.trim()) {
+      onChange({ amount: 0, currency: value.currency });
+      return;
+    }
+    const parsed = parseAmount(nextRaw);
     if (parsed !== null && parsed >= 0) {
       onChange({ amount: parsed, currency: value.currency });
     }
   };
 
-  const toggleCurrency = (curr: 'USD' | 'PKR') => {
+  const handleBlur = () => {
+    const parsed = parseAmount(text);
+    if (parsed !== null && parsed >= 0) {
+      setText(parsed ? String(parsed) : '');
+      onChange({ amount: parsed, currency: value.currency });
+    }
+  };
+
+  const toggleCurrency = (curr: Currency) => {
     onChange({ amount: value.amount, currency: curr });
   };
 
-  const convertedPkr =
-    value.currency === 'PKR' ? value.amount : value.amount * effectiveRate;
-  const convertedUsd =
-    value.currency === 'USD' ? value.amount : value.amount / effectiveRate;
+  const modeUsed = conversionMode ?? settings.defaultConversionMode;
+  const convertedPkr = moneyToPkr(value, ctx, conversionMode, tax);
+  const convertedUsd = moneyToUsd(value, ctx, conversionMode, tax);
+  const targetCurrency: Currency = value.currency === 'USD' ? 'PKR' : 'USD';
+
+  const modeLabel =
+    modeUsed === 'effective'
+      ? `at card rate ₨${settings.rates.effective}`
+      : modeUsed === 'market'
+        ? `at market ₨${settings.rates.market}`
+        : 'with detailed tax';
 
   return (
     <div className={className}>
@@ -80,6 +87,7 @@ export function MoneyInput({
           inputMode="decimal"
           value={text}
           onChange={(e) => handleTextChange(e.target.value)}
+          onBlur={handleBlur}
           placeholder={placeholder}
           className="flex-1 bg-transparent text-sm num text-[var(--text)] outline-none min-w-0"
         />
@@ -105,10 +113,10 @@ export function MoneyInput({
         <Amount
           pkr={convertedPkr}
           usd={convertedUsd}
-          displayCurrency={value.currency === 'USD' ? 'PKR' : 'USD'}
+          displayCurrency={targetCurrency}
           tone="muted"
         />{' '}
-        at card rate
+        {modeLabel}
       </div>
     </div>
   );

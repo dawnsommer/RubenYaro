@@ -1,65 +1,73 @@
-import { HTMLAttributes } from 'react';
+import { HTMLAttributes, useState } from 'react';
+import { useStore } from '../../store/useStore';
+import {
+  Breakdown,
+  computeBreakdown,
+  formatBreakdownTooltip,
+  getConversionContext,
+  pkrToUsd,
+} from '../../lib/currency';
+import { formatCurrency } from '../../lib/format';
+import { Currency } from '../../types';
 
 export type AmountTone = 'default' | 'positive' | 'negative' | 'warning' | 'muted';
 
 export interface AmountProps extends HTMLAttributes<HTMLSpanElement> {
   pkr: number;
   usd?: number;
-  displayCurrency?: 'PKR' | 'USD';
+  displayCurrency?: Currency;
   showSecondary?: boolean;
   compact?: boolean;
   tone?: AmountTone;
+  breakdown?: Breakdown;
   breakdownTooltip?: string;
   privacyBlur?: boolean;
-}
-
-function formatNum(value: number, currency: 'PKR' | 'USD', compact = false): string {
-  const sign = value < 0 ? '-' : '';
-  const abs = Math.abs(value);
-  const symbol = currency === 'PKR' ? '₨ ' : '$ ';
-
-  if (compact) {
-    if (currency === 'PKR') {
-      if (abs >= 1_000_000) {
-        const m = abs / 1_000_000;
-        return `${sign}${symbol}${Number(m.toFixed(2))}M`;
-      }
-      if (abs >= 1_000) {
-        const k = abs / 1_000;
-        return `${sign}${symbol}${Number(k.toFixed(1))}k`;
-      }
-    } else {
-      if (abs >= 1_000_000) {
-        return `${sign}${symbol}${Number((abs / 1_000_000).toFixed(2))}M`;
-      }
-      if (abs >= 10_000) {
-        return `${sign}${symbol}${Number((abs / 1_000).toFixed(1))}k`;
-      }
-    }
-  }
-
-  const rounded = currency === 'PKR' ? Math.round(abs) : Math.round(abs * 100) / 100;
-  return `${sign}${symbol}${rounded.toLocaleString('en-US', {
-    maximumFractionDigits: currency === 'PKR' ? 0 : 2,
-  })}`;
+  prefix?: string;
 }
 
 export function Amount({
   pkr,
   usd,
-  displayCurrency = 'PKR',
+  displayCurrency: displayCurrencyProp,
   showSecondary = false,
   compact = false,
   tone = 'default',
+  breakdown,
   breakdownTooltip,
-  privacyBlur = false,
+  privacyBlur,
+  prefix = '',
   className = '',
   ...props
 }: AmountProps) {
-  const computedUsd = usd ?? pkr / 300;
+  const settings = useStore((s) => s.settings);
+  const [revealed, setRevealed] = useState(false);
+
+  const displayCurrency = displayCurrencyProp ?? settings.displayCurrency;
+  const isPrivacy = privacyBlur ?? settings.privacyMode;
+  const ctx = getConversionContext(settings);
+
+  const computedUsd =
+    usd ??
+    pkrToUsd(
+      pkr,
+      settings.defaultConversionMode,
+      settings.rates.market,
+      settings.rates.effective,
+      settings.defaultTax
+    );
+
   const primaryValue = displayCurrency === 'PKR' ? pkr : computedUsd;
-  const secondaryCurrency = displayCurrency === 'PKR' ? 'USD' : 'PKR';
+  const secondaryCurrency: Currency = displayCurrency === 'PKR' ? 'USD' : 'PKR';
   const secondaryValue = displayCurrency === 'PKR' ? computedUsd : pkr;
+
+  const autoBreakdown =
+    breakdown ??
+    computeBreakdown(
+      usd !== undefined ? { amount: usd, currency: 'USD' } : { amount: pkr, currency: 'PKR' },
+      ctx
+    );
+
+  const tooltip = breakdownTooltip ?? formatBreakdownTooltip(autoBreakdown);
 
   const toneClass: Record<AmountTone, string> = {
     default: 'text-[var(--text)]',
@@ -71,16 +79,21 @@ export function Amount({
 
   return (
     <span
-      title={breakdownTooltip}
-      className={`inline-flex items-baseline gap-1.5 num amt ${
-        privacyBlur ? 'blur-[6px] select-none' : ''
+      title={tooltip}
+      onMouseEnter={() => isPrivacy && setRevealed(true)}
+      onMouseLeave={() => isPrivacy && setRevealed(false)}
+      className={`inline-flex items-baseline gap-1.5 num transition-opacity duration-150 ${
+        isPrivacy && !revealed ? 'amt blur-[6px] select-none' : ''
       } ${toneClass[tone]} ${className}`}
       {...props}
     >
-      <span>{formatNum(primaryValue, displayCurrency, compact)}</span>
+      <span>
+        {prefix}
+        {formatCurrency(primaryValue, displayCurrency, { compact })}
+      </span>
       {showSecondary && (
         <span className="text-xs font-normal text-[var(--text-muted)]">
-          ≈ {formatNum(secondaryValue, secondaryCurrency, compact)}
+          ≈ {formatCurrency(secondaryValue, secondaryCurrency, { compact })}
         </span>
       )}
     </span>

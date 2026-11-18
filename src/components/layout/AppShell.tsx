@@ -2,6 +2,7 @@ import { ReactNode, useEffect, useState } from 'react';
 import { Sidebar } from './Sidebar';
 import { BottomNav } from './BottomNav';
 import { RateBar } from './RateBar';
+import { useStore } from '../../store/useStore';
 
 export interface AppShellProps {
   children: ReactNode;
@@ -9,19 +10,20 @@ export interface AppShellProps {
 
 export function AppShell({ children }: AppShellProps) {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-  const [displayCurrency, setDisplayCurrency] = useState<'PKR' | 'USD'>('PKR');
-  const [privacyMode, setPrivacyMode] = useState(false);
-  const [marketRate, setMarketRate] = useState(281.4);
-  const [effectiveRate, setEffectiveRate] = useState(300);
-  const [taxPercent, setTaxPercent] = useState(5);
+  const privacyMode = useStore((s) => s.settings.privacyMode);
+  const theme = useStore((s) => s.settings.theme);
 
   useEffect(() => {
     document.body.classList.toggle('privacy', privacyMode);
   }, [privacyMode]);
 
-  const handleToggleTheme = () => {
-    document.documentElement.classList.toggle('dark');
-  };
+  useEffect(() => {
+    if (theme === 'dark') {
+      document.documentElement.classList.add('dark');
+    } else if (theme === 'light') {
+      document.documentElement.classList.remove('dark');
+    }
+  }, [theme]);
 
   return (
     <div className="flex min-h-screen bg-[var(--bg)] text-[var(--text)]">
@@ -31,19 +33,7 @@ export function AppShell({ children }: AppShellProps) {
       />
 
       <div className="flex-1 min-w-0 flex flex-col pb-16 lg:pb-0">
-        <RateBar
-          marketRate={marketRate}
-          effectiveRate={effectiveRate}
-          taxPercent={taxPercent}
-          displayCurrency={displayCurrency}
-          onDisplayCurrencyChange={setDisplayCurrency}
-          privacyMode={privacyMode}
-          onTogglePrivacy={() => setPrivacyMode((p) => !p)}
-          onToggleTheme={handleToggleTheme}
-          onMarketRateChange={setMarketRate}
-          onEffectiveRateChange={setEffectiveRate}
-          onTaxPercentChange={setTaxPercent}
-        />
+        <RateBar />
 
         <main className="flex-1 w-full max-w-[1200px] mx-auto p-4 lg:p-8">
           {children}
