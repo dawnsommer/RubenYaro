@@ -9,7 +9,7 @@
 | Current checkpoint | **All checkpoints complete (CP0–CP11 done, tagged `v1.0.0`)** |
 | Last updated | 2026-11-18 · by: CP11 release session |
 | Build status | green (`npm run build && npm test && npm run lint` — 5 test files, 27 tests pass) |
-| Live URL | Deploy via GitHub Actions on push to `main` (`.github/workflows/deploy.yml`) |
+| Live URL | https://dawnsommer.github.io/RubenYaro/ |
 
 ## 2. Checkpoints  (`[ ]` todo · `[~]` in progress · `[x]` done)
 Do them **in order**. One checkpoint ≈ one chat. Don't start the next until "Done when" passes.
