@@ -22,6 +22,7 @@
     { "key": "living", "name": "Living", "color": "#22C55E", "icon": "Home" },
     { "key": "research", "name": "Research", "color": "#0EA5E9", "icon": "FlaskConical" },
     { "key": "setup", "name": "Setup & gear", "color": "#EAB308", "icon": "Laptop" },
+    { "key": "lifestyle", "name": "Lifestyle", "color": "#A855F7", "icon": "Sparkles" },
     { "key": "loans", "name": "Loan repayments", "color": "#EF4444", "icon": "HandCoins" },
     { "key": "misc", "name": "Misc", "color": "#64748B", "icon": "Package" }
   ],

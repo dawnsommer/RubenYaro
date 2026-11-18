@@ -6,9 +6,9 @@
 |---|---|
 | Project | RubenYaro — USMLE cost + task planner, static SPA on GitHub Pages |
 | Stack | Vite · React 18 · TS strict · Tailwind v4 · Zustand(persist) · HashRouter · recharts · dnd-kit · cmdk · date-fns · vitest |
-| Current checkpoint | **R2 v2.0 redesign done** (CP0–CP11 + v1.1 deploy + R2) |
-| Last updated | 2026-11-18 · by: Claude Code (S15 · R2 redesign) |
-| Build status | green (`npm run build && npm test` — 4 test files, 26 tests pass) · v2.0.0 not yet pushed/deployed |
+| Current checkpoint | **R3 v2.1 — Google sync, Inheritance page, new Home hero** |
+| Last updated | 2026-11-18 · by: Claude Code (S16 · R3) |
+| Build status | green (`npm run build && npm test` — 5 test files, 30 tests pass) · v2.1.0 committed, not yet pushed |
 | Live URL | https://dawnsommer.github.io/RubenYaro/ |
 
 ## 2. Checkpoints  (`[ ]` todo · `[~]` in progress · `[x]` done)
@@ -29,14 +29,17 @@ Do them **in order**. One checkpoint ≈ one chat. Don't start the next until "D
 | CP10 | [x] | Settings + ⌘K + privacy + PWA | §6.6, §6.7, §8, §9 | All settings sections; palette; shortcuts; privacy blur; snapshots; backup nudge; offline PWA |
 | CP11 | [x] | QA + polish + release | §11 | Tests green, Lighthouse ≥90/95, a11y pass, README usage, tagged v1.0.0 |
 | R2 | [x] | v2 redesign (theme, shell, inline cost editor) | D16–D19 | Build/tests green; no side drawers; Costs edit inline; multi-agent files in place |
+| R3 | [x] | Google sync · Inheritance page · Home hero · app icon | D20–D24 | Build/tests green; sync works on the live site; inheritance maths tested |
 
 ## 3. Active work  (only the current checkpoint — overwrite each session)
-- **Goal:** R2 redesign shipped locally as `v2.0.0` (not pushed yet — user decides when to deploy).
+- **Goal:** R3 shipped locally as `v2.1.0` (push = deploy; user decides).
 - **Next steps (pick up here):**
-  1. Push `main` → GitHub Pages deploys; on the live site use Settings → **Update & Reload App**.
-  2. Optional polish still open: Money (`src/features/accounts/AccountsPage.tsx`) and Planner (`src/features/planner/PlannerPage.tsx`) only got the theme/header pass — they could adopt the inline-edit pattern from `src/features/costs/CostEditor.tsx` (e.g. edit account inline instead of the modal). Tasks edit still uses the `Sheet` modal (`TasksPage.tsx` "Edit task").
-  3. A few Settings inputs still use the old inline class string instead of `.field` (SettingsPage.tsx ~L247/423/502/564/752) — cosmetic.
-- **Blockers / questions for user:** none.
+  1. Push `main` → Pages deploys. On the live site: Settings → Data & backup → Import `private/my-data.json` (Merge) to add the missing personal costs (loan returns, job payment, a Lifestyle item) and the inheritance plan; then Settings → Sync → Sign in.
+  2. **Direct Google sign-in for RubenYaro needs the shared Worker allow-list updated** (owner does this in Cloudflare; the Worker source is in `~/Documents/Step Simulator/…/backend/worker.mjs`, `ALLOWED_APPS`): add `"rubenyaro": { returnUrls: ["https://dawnsommer.github.io/RubenYaro/"] }`. Until then sync works by reusing a Thunder tracker / ThunderShadow sign-in in the same browser (probe: `/oauth/start?app_id=rubenyaro…` → `invalid_return_url`).
+  3. User plans to: export JSON + sync to Google, then **reset the app** so someone else can use it. Reset signs out of sync first (so the Google copy is never overwritten with an empty app).
+  4. Installments in the user's plan add up to 12.6M vs the 11.6M estate — the page flags it; user to confirm the numbers.
+  5. Optional polish (from R2): Money/Planner inline edit; task edit still uses the `Sheet` modal; a few old input classes in SettingsPage.
+- **Blockers / questions for user:** Worker allow-list (step 2); installment total mismatch (step 4).
 
 ## 4. Decisions (append one line each; never delete)
 - D1 Local-first, no backend; localStorage via Zustand persist. Repo holds no personal data.
@@ -58,13 +61,19 @@ Do them **in order**. One checkpoint ≈ one chat. Don't start the next until "D
 - D17 v2 theme: Geist font, violet accent `#6750F2` (dark `#9B8CFF`), soft-tinted status chips, subtle shadows, 18px card radius, gradient hero. Tokens in `src/styles/tokens.css`; shared `.field` / `.card` classes in `globals.css`.
 - D18 v2 shell: no sidebar/RateBar. One sticky `TopBar` (nav pills, rate pill → rate modal, PKR/USD toggle, privacy, ⌘K, settings gear) + 5-tab mobile `BottomNav` (Home, Costs, Tasks, Money, Planner). Nav list lives in `components/layout/nav.ts`.
 - D19 No side drawers: `Sheet` is now a centred modal (bottom sheet on mobile). Costs are edited **inline** — clicking a row expands `CostEditor` in place (name/amount, options, phase/category/due/priority, toggles, items, payments, "More options"). `CostDetailSheet` deleted. Deep link `#/costs?open=<id>` opens a cost (used by Home, Tasks, ⌘K). Costs views reduced to group by Phase/Category/Month + filter All/Unpaid/Paid/Maybe; Table view removed.
+- D20 Schema v3: `AppData.inheritance?: InheritancePlan | null` (stand-alone; never feeds accounts/costs/totals). Migration passes it through (absent → null). Import/merge carries it; merge import now **unions** categories/phases by id instead of replacing them.
+- D21 Inheritance page (`/inheritance`, `features/inheritance/`): estate − deductions (fixed or % — e.g. tax; can be "paid out" or go to an heir as a reimbursement) → shares by units → loans between heirs (auto-split: reimbursement holders lend first, rest equal) → installments × recipients allocation grid (+ "By installment" checklist, Auto-fill = fees/tax first then pro-rata by remaining need). Display unit lac/M/₨ via `<Amount pkrUnit>`. Maths in `calc.ts`, tested with synthetic numbers. User's real plan lives only in `private/my-data.json`.
+- D22 Google sync (`src/lib/cloud.ts` + `store/cloudBridge.ts`): same shared Cloudflare Worker as Thunder tracker; reuses a ThunderShadow / Thunder tracker session from the shared origin (read-only), else own `app_id=rubenyaro` sign-in. Drive appDataFolder file `rubenyaro-state.json`; whole-document newest-wins, the losing copy kept locally (Settings → Sync → Restore). Auto market-rate refreshes don't count as edits. Keys: `rubenyaro:cloud-*`.
+- D23 Home hero rebuilt (`dashboard/PlanHero.tsx`): verdict, then After-tax and Market lenses side by side (each: spare/short + Total plan), paid/to-pay/spare bar, small detail grid. Costs summary + Money page also show Total plan after tax **and** at market.
+- D24 App icon = violet squircle, white R, gold coin (`public/icon.svg`, PNGs 180/192/512, `BrandMark.tsx`). Rate pill has a convert icon and the rate modal has a Quick convert. Shared-origin safety: SW only deletes `rubenyaro-` caches; Update & Reload only unregisters our own SW scope.
 
 ## 5. Session log (keep last 3; compress older into §6 as one line; sign with agent name)
+- **S16 · 2026-11-18 · Claude Code — R3** — Google sync (shared Worker / borrowed Thunder sign-in), Inheritance planner page, Home hero rebuilt (after-tax + market side by side), Lifestyle category, app icon + PNGs, rate-pill convert icon + quick convert, shared-origin cache fix, v2.1.0.
 - **S15 · 2026-11-18 · Claude Code — R2 redesign** — Multi-agent setup (AGENTS/CLAUDE/GEMINI), new theme + TopBar/BottomNav shell, inline `CostEditor` replaces cost drawer, simplified Home + Costs, decluttered Tasks rows, Sheet → centred modal, v2.0.0.
 - **S14 · 2026-11-18 · Versioned Deploy** — Added build-time `version.json` manifest, `src/lib/version.ts`, network-first HTML caching in `sw.js`, and one-click "Update & Reload App" button in Settings.
-- **S13 · 2026-11-18 · Redesign** — Simplified UI & mobile UX, pinned tasks at top of Dashboard, manual task sorting + pin buttons, dual Market + `×300` after-tax rate display, top live-rate refresh button, and added `Visa Interview` (₨60k).
 
 ## 6. History (one line per old session)
+- **S13 · 2026-11-18 · Redesign** — Simplified UI & mobile UX, pinned tasks at top of Dashboard, manual task sorting + pin buttons, dual Market + `×300` after-tax rate display, top live-rate refresh button, and added `Visa Interview` (₨60k).
 - **S12 · 2026-11-18 · CP11** — Code-split bundle, README usage guide, 27 tests + strict TS, tagged `v1.0.0`.
 - **S11 · 2026-11-18 · CP10** — Built `SettingsPage.tsx` (6 sections, JSON import/merge, snapshots, backup nudge, RESET), `CommandPalette.tsx` (`⌘K` + shortcuts), and offline PWA (`manifest.webmanifest` + `sw.js`).
 - **S10 · 2026-11-18 · CP9** — Built `PlannerPage.tsx` with affordability check, savings goal + cash-flow chart, rate what-if sliders, quick converter, and scenario toggles.

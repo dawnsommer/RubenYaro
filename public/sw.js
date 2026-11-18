@@ -1,4 +1,4 @@
-const CACHE_NAME = 'rubenyaro-cache-v2';
+const CACHE_NAME = 'rubenyaro-cache-v3';
 
 self.addEventListener('install', () => {
   self.skipWaiting();
@@ -10,7 +10,8 @@ self.addEventListener('activate', (event) => {
       .keys()
       .then((keys) =>
         Promise.all(
-          keys.filter((k) => k !== CACHE_NAME).map((k) => caches.delete(k))
+          // shared origin: only remove our own old caches, never other apps'
+          keys.filter((k) => k.startsWith('rubenyaro-') && k !== CACHE_NAME).map((k) => caches.delete(k))
         )
       )
       .then(() => self.clients.claim())

@@ -33,7 +33,9 @@ export async function checkRemoteVersion(): Promise<{
 }
 
 /**
- * Unregisters all service workers, deletes all CacheStorage caches, and reloads with a cache-busting query param.
+ * Unregisters RubenYaro's service worker, deletes RubenYaro's caches, and reloads with a cache-busting query param.
+ * dawnsommer.github.io also hosts other apps (Thunder tracker, ThunderShadow…) that share the origin's
+ * service-worker registrations and CacheStorage — only touch our own scope / `rubenyaro-` caches.
  * Preserves localStorage (`rubenyaro:v1`) so zero user data is lost.
  */
 export async function forceUpdateApp(): Promise<void> {
@@ -41,11 +43,12 @@ export async function forceUpdateApp(): Promise<void> {
   try {
     if ('serviceWorker' in navigator) {
       const registrations = await navigator.serviceWorker.getRegistrations();
-      await Promise.all(registrations.map((r) => r.unregister()));
+      const scope = new URL(import.meta.env.BASE_URL, window.location.origin).href;
+      await Promise.all(registrations.filter((r) => r.scope.startsWith(scope)).map((r) => r.unregister()));
     }
     if ('caches' in window) {
       const keys = await window.caches.keys();
-      await Promise.all(keys.map((k) => window.caches.delete(k)));
+      await Promise.all(keys.filter((k) => k.startsWith('rubenyaro-')).map((k) => window.caches.delete(k)));
     }
   } catch {
     // proceed to reload even if SW cleanup throws

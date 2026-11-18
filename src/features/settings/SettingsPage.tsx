@@ -10,6 +10,8 @@ import {
   Sparkles,
 } from 'lucide-react';
 import { useStore, getSnapshots } from '../../store/useStore';
+import { SyncCard } from './SyncCard';
+import { disconnect, useCloudStatus } from '../../lib/cloud';
 import { fetchLiveMarketRate, formatRelativeRateAge } from '../../lib/rates';
 import { buildCostsCsv, downloadTextFile } from '../../lib/csv';
 import {
@@ -32,6 +34,7 @@ import {
 } from '../../components/ui';
 
 type SettingsSection =
+  | 'sync'
   | 'currency'
   | 'journey'
   | 'categories'
@@ -45,7 +48,8 @@ export function SettingsPage() {
   const state = useStore();
   const { settings, costs, accounts, transactions } = state;
 
-  const [section, setSection] = useState<SettingsSection>('currency');
+  const cloud = useCloudStatus();
+  const [section, setSection] = useState<SettingsSection>('sync');
   const [refreshing, setRefreshing] = useState(false);
 
   // Version & App Update state
@@ -148,6 +152,7 @@ export function SettingsPage() {
   };
 
   const NAV: { id: SettingsSection; label: string }[] = [
+    { id: 'sync', label: 'Sync' },
     { id: 'currency', label: 'Currency & rates' },
     { id: 'journey', label: 'Journey & dates' },
     { id: 'categories', label: 'Categories & phases' },
@@ -214,6 +219,8 @@ export function SettingsPage() {
         </nav>
 
         <div className="col-span-12 lg:col-span-9 space-y-5">
+          {section === 'sync' && <SyncCard />}
+
           {/* 1. CURRENCY & RATES */}
           {section === 'currency' && (
             <Card
@@ -741,7 +748,11 @@ export function SettingsPage() {
 
               <Card
                 title="Danger zone — Reset all data"
-                subtitle="Type RESET below to wipe all accounts, transactions, costs, and tasks."
+                subtitle={
+                  cloud.connected
+                    ? 'Type RESET to wipe this device (accounts, costs, tasks, inheritance). You are signed out of sync first, so your Google copy is kept.'
+                    : 'Type RESET below to wipe all accounts, transactions, costs, tasks and the inheritance plan.'
+                }
               >
                 <div className="flex items-center gap-2">
                   <input
@@ -754,7 +765,9 @@ export function SettingsPage() {
                   <Button
                     variant="danger"
                     disabled={resetConfirmText !== 'RESET'}
-                    onClick={() => {
+                    onClick={async () => {
+                      // never push an empty app over the Google copy
+                      if (cloud.connected) await disconnect();
                       state.resetAllData();
                       setResetConfirmText('');
                     }}

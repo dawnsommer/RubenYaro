@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
 import { NavLink } from 'react-router-dom';
-import { Eye, EyeOff, RefreshCw, Settings2, Search } from 'lucide-react';
+import { ArrowLeftRight, Cloud, CloudOff, Eye, EyeOff, RefreshCw, Settings2, Search } from 'lucide-react';
+import { useCloudStatus } from '../../lib/cloud';
+import { BrandMark } from './BrandMark';
 import { Sheet } from '../ui/Sheet';
 import { Button } from '../ui/Button';
 import { useStore } from '../../store/useStore';
@@ -19,7 +21,9 @@ export function TopBar({ onOpenCommandPalette }: TopBarProps) {
   const updateSettings = useStore((s) => s.updateSettings);
   const updateRates = useStore((s) => s.updateRates);
 
+  const cloud = useCloudStatus();
   const [rateOpen, setRateOpen] = useState(false);
+  const [quickUsd, setQuickUsd] = useState('100');
   const [refreshing, setRefreshing] = useState(false);
   const [offlineFailed, setOfflineFailed] = useState(false);
   const [draftMarket, setDraftMarket] = useState(String(settings.rates.market));
@@ -60,13 +64,8 @@ export function TopBar({ onOpenCommandPalette }: TopBarProps) {
       >
         <div className="max-w-[1120px] mx-auto h-14 px-4 lg:px-6 flex items-center gap-2">
           {/* Brand */}
-          <NavLink to="/" className="flex items-center gap-2 shrink-0 mr-2">
-            <span
-              className="w-8 h-8 rounded-[10px] grid place-items-center text-white text-sm font-bold shadow-[var(--shadow-sm)]"
-              style={{ background: 'linear-gradient(135deg, var(--hero-from), var(--hero-to))' }}
-            >
-              R
-            </span>
+          <NavLink to="/" className="flex items-center gap-2 shrink-0 mr-1 sm:mr-2">
+            <BrandMark className="w-8 h-8" />
             <span className="hidden sm:inline font-semibold tracking-[-0.02em] text-[15px]">
               RubenYaro
             </span>
@@ -102,14 +101,17 @@ export function TopBar({ onOpenCommandPalette }: TopBarProps) {
               setDraftEffective(String(settings.rates.effective));
               setRateOpen(true);
             }}
-            title={`Market rate, updated ${ageLabel}. Click to edit.`}
-            className="inline-flex items-center gap-1.5 h-9 rounded-full bg-[var(--surface)] border border-[var(--border)] pl-2.5 pr-3 text-xs font-medium num hover:border-[var(--border-strong)] cursor-pointer shadow-[var(--shadow-sm)] min-w-0"
+            title={`Quick conversion · market rate updated ${ageLabel}`}
+            className="inline-flex items-center gap-1.5 h-9 rounded-full bg-[var(--surface)] border border-[var(--border)] pl-1.5 pr-3 text-xs font-medium num hover:border-[var(--border-strong)] cursor-pointer shadow-[var(--shadow-sm)] shrink-0"
           >
-            <span
-              className={`w-1.5 h-1.5 rounded-full shrink-0 ${
-                offlineFailed ? 'bg-[var(--warning)]' : 'bg-[var(--positive)]'
-              }`}
-            />
+            <span className="relative grid place-items-center w-5 h-5 rounded-full bg-[var(--accent-soft)] text-[var(--accent)] shrink-0">
+              <ArrowLeftRight className="w-3 h-3" strokeWidth={2.5} />
+              <span
+                className={`absolute -right-0.5 -top-0.5 w-1.5 h-1.5 rounded-full ring-2 ring-[var(--surface)] ${
+                  offlineFailed ? 'bg-[var(--warning)]' : 'bg-[var(--positive)]'
+                }`}
+              />
+            </span>
             <span className="text-[var(--text)] font-semibold">
               ₨{settings.rates.market.toFixed(1)}
             </span>
@@ -143,10 +145,32 @@ export function TopBar({ onOpenCommandPalette }: TopBarProps) {
             onClick={onOpenCommandPalette}
             aria-label="Search and commands"
             title="Search & commands (⌘K)"
-            className={`${iconBtn} hidden md:inline-flex`}
+            className={`${iconBtn} max-md:!hidden`}
           >
             <Search className="w-[18px] h-[18px]" />
           </button>
+
+          <NavLink
+            to="/settings"
+            aria-label={`Google sync: ${cloud.connected ? cloud.state : 'signed out'}`}
+            title={cloud.connected ? cloud.message || 'Synced with Google' : 'Sign in to sync with Google'}
+            className={`${iconBtn} relative ${
+              !cloud.connected
+                ? ''
+                : cloud.state === 'error' || cloud.state === 'expired'
+                  ? '!text-[var(--warning)]'
+                  : '!text-[var(--accent)]'
+            }`}
+          >
+            {cloud.connected ? (
+              <Cloud className={`w-[18px] h-[18px] ${cloud.state === 'syncing' ? 'animate-pulse' : ''}`} />
+            ) : (
+              <CloudOff className="w-[18px] h-[18px]" />
+            )}
+            {cloud.connected && cloud.pending && (
+              <span className="absolute right-1.5 top-1.5 w-1.5 h-1.5 rounded-full bg-[var(--warning)]" />
+            )}
+          </NavLink>
 
           <NavLink
             to="/settings"
@@ -165,7 +189,7 @@ export function TopBar({ onOpenCommandPalette }: TopBarProps) {
         open={rateOpen}
         onClose={() => setRateOpen(false)}
         size="sm"
-        title="Exchange rates"
+        title="Rates & quick convert"
         footer={
           <>
             <Button
@@ -204,6 +228,38 @@ export function TopBar({ onOpenCommandPalette }: TopBarProps) {
         }
       >
         <div className="space-y-4">
+          <div className="rounded-[14px] bg-[var(--surface-2)] p-3.5">
+            <label className="flex items-center gap-1.5 text-xs font-medium text-[var(--text-muted)] mb-2">
+              <ArrowLeftRight className="w-3.5 h-3.5" /> Quick convert
+            </label>
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-semibold text-[var(--text-muted)]">$</span>
+              <input
+                inputMode="decimal"
+                value={quickUsd}
+                onChange={(e) => setQuickUsd(e.target.value)}
+                onFocus={(e) => e.currentTarget.select()}
+                aria-label="US dollars"
+                className="field num text-lg font-semibold !bg-[var(--surface)]"
+              />
+            </div>
+            {(() => {
+              const usd = parseFloat(quickUsd) || 0;
+              const fmt = (n: number) => '₨ ' + Math.round(n).toLocaleString('en-US');
+              return (
+                <div className="mt-2.5 grid grid-cols-2 gap-2 text-sm num">
+                  <div>
+                    <p className="text-[11px] text-[var(--text-muted)]">Market</p>
+                    <p className="font-semibold">{fmt(usd * (parseFloat(draftMarket) || settings.rates.market))}</p>
+                  </div>
+                  <div>
+                    <p className="text-[11px] text-[var(--text-muted)]">After tax (card)</p>
+                    <p className="font-semibold">{fmt(usd * (parseFloat(draftEffective) || settings.rates.effective))}</p>
+                  </div>
+                </div>
+              );
+            })()}
+          </div>
           <div>
             <label className="block text-xs font-medium text-[var(--text-muted)] mb-1.5">
               Market rate · PKR per $1

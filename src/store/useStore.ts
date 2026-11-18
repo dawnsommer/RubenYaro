@@ -6,6 +6,7 @@ import {
   AppData,
   Category,
   Cost,
+  InheritancePlan,
   KeyDate,
   Phase,
   Settings,
@@ -30,6 +31,18 @@ export interface SnapshotEntry {
   date: string; // YYYY-MM-DD
   createdAt: string;
   data: AppData;
+}
+
+/** The persisted / synced part of the store. */
+export function pickAppData(state: AppData): AppData {
+  return {
+    settings: state.settings,
+    accounts: state.accounts,
+    transactions: state.transactions,
+    costs: state.costs,
+    tasks: state.tasks,
+    inheritance: state.inheritance ?? null,
+  };
 }
 
 export interface ExportBundle extends AppData {
@@ -115,6 +128,9 @@ export interface StoreActions {
   updateTask: (id: string, patch: Partial<Task>) => void;
   deleteTask: (id: string) => void;
   reorderTasks: (orderedIds: string[]) => void;
+
+  // Inheritance (stand-alone planner)
+  setInheritance: (plan: InheritancePlan | null) => void;
 
   // Seed, Export, Import, Reset
   loadStarterData: () => void;
@@ -574,6 +590,9 @@ export const useStore = create<RubenYaroStore>()(
           };
         }),
 
+      setInheritance: (plan) =>
+        set({ inheritance: plan ? { ...plan, updatedAt: new Date().toISOString() } : null }),
+
       // Seed, Export, Import, Reset
       loadStarterData: () => {
         const seeded = buildSeededAppData();
@@ -588,11 +607,7 @@ export const useStore = create<RubenYaroStore>()(
       exportJSON: () => {
         const state = get();
         return {
-          settings: state.settings,
-          accounts: state.accounts,
-          transactions: state.transactions,
-          costs: state.costs,
-          tasks: state.tasks,
+          ...pickAppData(state),
           exportedAt: new Date().toISOString(),
           schemaVersion: CURRENT_SCHEMA_VERSION,
         };
@@ -603,13 +618,7 @@ export const useStore = create<RubenYaroStore>()(
           return { ok: false, error: 'Invalid JSON payload' };
         }
 
-        const current: AppData = {
-          settings: get().settings,
-          accounts: get().accounts,
-          transactions: get().transactions,
-          costs: get().costs,
-          tasks: get().tasks,
-        };
+        const current: AppData = pickAppData(get());
 
         // Full AppData shape?
         if (isValidAppData(raw)) {
@@ -629,6 +638,7 @@ export const useStore = create<RubenYaroStore>()(
           Array.isArray(obj.costs) ||
           Array.isArray(obj.accounts) ||
           Array.isArray(obj.tasks) ||
+          typeof obj.inheritance === 'object' ||
           typeof obj.settings === 'object'
         ) {
           if (mode === 'replace') {
@@ -651,23 +661,11 @@ export const useStore = create<RubenYaroStore>()(
       name: PERSIST_KEY,
       version: CURRENT_SCHEMA_VERSION,
       storage: createJSONStorage(() => createDebouncedStorage(300)),
-      partialize: (state): AppData => ({
-        settings: state.settings,
-        accounts: state.accounts,
-        transactions: state.transactions,
-        costs: state.costs,
-        tasks: state.tasks,
-      }),
+      partialize: (state): AppData => pickAppData(state),
       migrate: (persistedState, version) => migrate(persistedState, version),
       onRehydrateStorage: () => (state) => {
         if (state) {
-          saveDailySnapshot({
-            settings: state.settings,
-            accounts: state.accounts,
-            transactions: state.transactions,
-            costs: state.costs,
-            tasks: state.tasks,
-          });
+          saveDailySnapshot(pickAppData(state));
         }
       },
     }

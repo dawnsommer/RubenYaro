@@ -319,12 +319,12 @@ export function CostsPage() {
       <div className="card p-5 mb-4">
         <div className="grid grid-cols-3 gap-4">
           <div>
-            <p className="label-micro">Plan</p>
+            <p className="label-micro">Total plan</p>
             <p className="text-xl sm:text-2xl font-semibold num mt-1 tracking-[-0.02em]">
-              <Amount pkr={totals.market} compact />
+              <Amount pkr={totals.card} compact />
             </p>
             <p className="text-xs text-[var(--text-faint)] num mt-0.5">
-              card <Amount pkr={totals.card} compact tone="muted" />
+              after tax · market <Amount pkr={totals.market} compact tone="muted" />
             </p>
           </div>
           <div>

@@ -36,6 +36,9 @@ import {
   accountBalancePkr,
   buildAccountLedger,
   selectTotalFundsPkr,
+  selectTotalPaidPkr,
+  selectPlanTotalEffectivePkr,
+  selectPlanTotalMarketPkr,
   selectTotalGrossFundsPkr,
   selectTotalReservedPkr,
 } from '../../store/selectors';
@@ -517,6 +520,41 @@ export function AccountsPage() {
           </div>
         </Card>
       </div>
+
+      {/* Against the plan: both conversions side by side */}
+      {(() => {
+        const paid = selectTotalPaidPkr(state);
+        const rows = [
+          { label: `After tax · ₨${settings.rates.effective}/$`, plan: selectPlanTotalEffectivePkr(state) },
+          { label: `Market · ₨${settings.rates.market.toFixed(1)}/$`, plan: selectPlanTotalMarketPkr(state) },
+        ];
+        return (
+          <div className="card p-4 sm:p-5">
+            <div className="flex items-center justify-between gap-2 mb-3">
+              <p className="text-[15px] font-semibold">Against your plan</p>
+              <span className="text-xs text-[var(--text-muted)]">confirmed costs</span>
+            </div>
+            <div className="grid sm:grid-cols-2 gap-2.5">
+              {rows.map((r) => {
+                const gap = availablePkr - Math.max(0, r.plan - paid);
+                return (
+                  <div key={r.label} className="rounded-[14px] bg-[var(--surface-2)] px-4 py-3">
+                    <p className="text-[11px] text-[var(--text-muted)] num">{r.label}</p>
+                    <div className="mt-1 flex items-baseline justify-between gap-2">
+                      <span className="text-sm">
+                        Total plan <b className="num"><Amount pkr={r.plan} /></b>
+                      </span>
+                      <span className="text-sm font-semibold num">
+                        <Amount pkr={Math.abs(gap)} prefix={gap >= 0 ? '+' : '−'} tone={gap >= 0 ? 'positive' : 'negative'} />
+                      </span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        );
+      })()}
 
       {/* Accounts grid */}
       <div className="space-y-3">

@@ -8,6 +8,7 @@ import {
   CostKind,
   CostVariant,
   Currency,
+  InheritancePlan,
   Money,
   Phase,
   Priority,
@@ -111,6 +112,7 @@ export interface SeedFormatInput {
   transactions?: Partial<Transaction>[];
   costs?: SeedCostInput[];
   tasks?: SeedTaskInput[];
+  inheritance?: InheritancePlan | null;
 }
 
 export function buildDefaultPhases(): Phase[] {
@@ -352,7 +354,19 @@ export function mapSeedToAppData(
     transactions,
     costs,
     tasks,
+    inheritance: input.inheritance ?? baseData?.inheritance ?? null,
   };
+}
+
+/** Union by id: keeps existing entries, incoming ones with the same id win, new ones are appended. */
+function unionById<T extends { id: string }>(existing: T[], incoming: T[]): T[] {
+  const out = [...existing];
+  for (const item of incoming) {
+    const i = out.findIndex((x) => x.id === item.id);
+    if (i >= 0) out[i] = { ...out[i], ...item };
+    else out.push(item);
+  }
+  return out;
 }
 
 export function mergeSeedIntoAppData(current: AppData, incoming: SeedFormatInput): AppData {
@@ -417,8 +431,20 @@ export function mergeSeedIntoAppData(current: AppData, incoming: SeedFormatInput
     }
   }
 
+  // Merging never drops your own categories/phases — incoming ones are added (or updated by id).
+  const settings: Settings = {
+    ...mapped.settings,
+    categories: incoming.categories
+      ? unionById(current.settings.categories, mapped.settings.categories)
+      : current.settings.categories,
+    phases: incoming.phases
+      ? unionById(current.settings.phases, mapped.settings.phases)
+      : current.settings.phases,
+  };
+
   return {
-    settings: mapped.settings,
+    settings,
+    inheritance: incoming.inheritance ?? current.inheritance ?? null,
     accounts: mergedAccounts,
     transactions: mergedTxns,
     costs: mergedCosts,
@@ -433,6 +459,7 @@ export function buildEmptyAppData(): AppData {
     transactions: [],
     costs: [],
     tasks: [],
+    inheritance: null,
   };
 }
 

@@ -7,6 +7,7 @@ import {
   Wallet,
   CheckCircle2,
   LineChart,
+  Landmark,
   Settings2,
   Eye,
   RefreshCw,
@@ -197,6 +198,13 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
               >
                 <LineChart className="w-4 h-4" />
                 <span>Go to Planner</span>
+              </Command.Item>
+              <Command.Item
+                onSelect={() => runAndClose(() => navigate('/inheritance'))}
+                className="flex items-center gap-2.5 px-3 py-2 rounded-[10px] text-sm text-[var(--text)] aria-selected:bg-[var(--accent-soft)] aria-selected:text-[var(--accent)] cursor-pointer"
+              >
+                <Landmark className="w-4 h-4" />
+                <span>Go to Inheritance</span>
               </Command.Item>
               <Command.Item
                 onSelect={() => runAndClose(() => navigate('/settings'))}

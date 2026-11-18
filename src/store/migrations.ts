@@ -2,7 +2,7 @@ import { nanoid } from 'nanoid';
 import { AppData } from '../types';
 import { buildDefaultSettings } from './seed';
 
-export const CURRENT_SCHEMA_VERSION = 2;
+export const CURRENT_SCHEMA_VERSION = 3;
 
 export function isValidAppData(value: unknown): value is AppData {
   if (!value || typeof value !== 'object') return false;
@@ -27,6 +27,7 @@ export function migrate(persistedState: unknown, version: number): AppData {
       transactions: [],
       costs: [],
       tasks: [],
+      inheritance: null,
     };
   }
 
@@ -115,5 +116,8 @@ export function migrate(persistedState: unknown, version: number): AppData {
     transactions: Array.isArray(state.transactions) ? state.transactions : [],
     costs,
     tasks,
+    // v3: stand-alone inheritance planner (absent before v3 → null)
+    inheritance:
+      state.inheritance && typeof state.inheritance === 'object' ? state.inheritance : null,
   };
 }

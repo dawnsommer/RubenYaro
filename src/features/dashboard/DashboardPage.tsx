@@ -18,6 +18,7 @@ import {
 import { daysUntil, formatShortDate } from '../../lib/dates';
 import { Amount, Checkbox, Chip, Progress } from '../../components/ui';
 import { STATUS_LABEL, STATUS_VARIANT } from '../costs/costUi';
+import { PlanHero } from './PlanHero';
 
 function SectionCard({
   title,
@@ -58,15 +59,12 @@ export function DashboardPage() {
   const paidPkr = selectTotalPaidPkr(state, includeMaybes);
   const planMarketPkr = selectPlanTotalMarketPkr(state, includeMaybes);
   const planCardPkr = selectPlanTotalEffectivePkr(state, includeMaybes);
-  const leftMarketPkr = Math.max(0, planMarketPkr - paidPkr);
-  const leftCardPkr = Math.max(0, planCardPkr - paidPkr);
-  const gapMarket = fundsPkr - leftMarketPkr;
-  const gapCard = fundsPkr - leftCardPkr;
-  const ok = gapMarket >= 0;
-
-  const paidPct = planMarketPkr > 0 ? Math.min(100, (paidPkr / planMarketPkr) * 100) : 0;
-  const fundedPct =
-    planMarketPkr > 0 ? Math.min(100 - paidPct, (fundsPkr / planMarketPkr) * 100) : 0;
+  const maybeExtraCardPkr =
+    selectPlanTotalEffectivePkr(state, true) - selectPlanTotalEffectivePkr(state, false);
+  const activeCosts = getActivePlanCosts(costs);
+  const usdShare = activeCosts
+    .filter((c) => includeMaybes || !c.maybe)
+    .reduce((sum, c) => sum + (costNativeUsd(c) ?? 0), 0);
 
   const upNext = useMemo(() => {
     const open = tasks.filter((t) => t.status !== 'done').sort((a, b) => a.order - b.order);
@@ -99,62 +97,18 @@ export function DashboardPage() {
 
   return (
     <div className="space-y-4">
-      {/* Hero */}
-      <section
-        className="relative overflow-hidden rounded-[24px] p-6 sm:p-7 text-white shadow-[var(--shadow-md)]"
-        style={{ background: 'linear-gradient(135deg, var(--hero-from), var(--hero-to))' }}
-      >
-        <div className="absolute -right-16 -top-20 w-72 h-72 rounded-full bg-white/10 blur-2xl pointer-events-none" />
-        <div className="relative">
-          <div className="flex items-center justify-between gap-3">
-            <p className="text-[13px] font-medium text-white/75">
-              {ok ? 'You’re covered with room to spare' : 'You still need'}
-            </p>
-            <button
-              type="button"
-              onClick={() => setIncludeMaybes((v) => !v)}
-              className={`h-7 px-3 rounded-full text-[11px] font-semibold transition-colors cursor-pointer ${
-                includeMaybes ? 'bg-white text-[var(--hero-from)]' : 'bg-white/15 text-white hover:bg-white/25'
-              }`}
-            >
-              {includeMaybes ? 'With maybes' : 'Confirmed only'}
-            </button>
-          </div>
-
-          <div className="mt-2 flex items-baseline gap-3 flex-wrap">
-            <span className="text-[40px] sm:text-[48px] leading-none font-semibold tracking-[-0.04em] num">
-              <Amount pkr={Math.abs(gapMarket)} className="!text-white" />
-            </span>
-            <span className="text-sm font-medium text-white/80">{ok ? 'surplus' : 'short'}</span>
-          </div>
-          <p className="mt-2 text-xs text-white/70 num">
-            At card rate ×{settings.rates.effective}:{' '}
-            <Amount pkr={Math.abs(gapCard)} compact className="!text-white font-semibold" />{' '}
-            {gapCard >= 0 ? 'surplus' : 'short'}
-          </p>
-
-          <div className="mt-5 h-2 rounded-full bg-white/20 overflow-hidden flex">
-            <div className="bg-white" style={{ width: `${paidPct}%` }} />
-            <div className="bg-white/50" style={{ width: `${fundedPct}%` }} />
-          </div>
-
-          <div className="mt-5 grid grid-cols-2 sm:grid-cols-4 gap-4">
-            {[
-              { label: 'My money', pkr: fundsPkr },
-              { label: 'Total plan', pkr: planMarketPkr },
-              { label: 'Paid', pkr: paidPkr },
-              { label: 'Left to pay', pkr: leftMarketPkr },
-            ].map((k) => (
-              <div key={k.label}>
-                <p className="text-[11px] font-medium uppercase tracking-[0.06em] text-white/60">{k.label}</p>
-                <p className="text-lg font-semibold num mt-0.5">
-                  <Amount pkr={k.pkr} compact className="!text-white" />
-                </p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
+      <PlanHero
+        settings={settings}
+        includeMaybes={includeMaybes}
+        onToggleMaybes={() => setIncludeMaybes((v) => !v)}
+        fundsPkr={fundsPkr}
+        paidPkr={paidPkr}
+        planMarketPkr={planMarketPkr}
+        planCardPkr={planCardPkr}
+        maybeExtraCardPkr={maybeExtraCardPkr}
+        costCount={activeCosts.filter((c) => includeMaybes || !c.maybe).length}
+        usdShare={usdShare}
+      />
 
       {/* Key dates */}
       {keyDates.length > 0 && (

@@ -25,6 +25,15 @@ export interface AmountProps extends HTMLAttributes<HTMLSpanElement> {
   breakdownTooltip?: string;
   privacyBlur?: boolean;
   prefix?: string;
+  /** PKR-only display in a fixed unit (Inheritance page): lac = 100,000 · million = 1,000,000 */
+  pkrUnit?: 'pkr' | 'lac' | 'million';
+}
+
+export function formatPkrUnit(pkr: number, unit: 'pkr' | 'lac' | 'million', digits = 2): string {
+  if (unit === 'pkr') return formatCurrency(pkr, 'PKR');
+  const v = pkr / (unit === 'lac' ? 100_000 : 1_000_000);
+  const n = Number(v.toFixed(digits)).toLocaleString('en-US', { maximumFractionDigits: digits });
+  return unit === 'lac' ? `${n} lac` : `${n}M`;
 }
 
 export function Amount({
@@ -39,6 +48,7 @@ export function Amount({
   breakdownTooltip,
   privacyBlur,
   prefix = '',
+  pkrUnit,
   className = '',
   ...props
 }: AmountProps) {
@@ -70,7 +80,9 @@ export function Amount({
       ctx
     );
 
-  const tooltip = breakdownTooltip ?? formatBreakdownTooltip(autoBreakdown);
+  const tooltip = pkrUnit
+    ? formatCurrency(pkr, 'PKR')
+    : breakdownTooltip ?? formatBreakdownTooltip(autoBreakdown);
 
   const toneClass: Record<AmountTone, string> = {
     default: 'text-[var(--text)]',
@@ -93,9 +105,11 @@ export function Amount({
       } ${toneClass[tone]} ${className}`}
       {...props}
     >
-      <span>
+      <span className="whitespace-nowrap">
         {prefix}
-        {formatCurrency(primaryValue, displayCurrency, { compact })}
+        {pkrUnit
+          ? formatPkrUnit(pkr, pkrUnit)
+          : formatCurrency(primaryValue, displayCurrency, { compact })}
       </span>
       {showSecondary && (
         <span className="text-xs font-normal text-[var(--text-muted)]">

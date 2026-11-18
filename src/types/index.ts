@@ -111,7 +111,44 @@ export interface Task {
 
 export interface KeyDate { id: string; label: string; date: string; kind: 'exam' | 'deadline' | 'eligibility' | 'other' }
 
+// ── Inheritance planner (stand-alone: not linked to accounts, costs or totals) ──
+// All amounts are PKR. Shares follow `units` (e.g. son 2 : daughter 1).
+export interface InheritanceHeir {
+  id: string; name: string;
+  relation: 'son' | 'daughter' | 'spouse' | 'parent' | 'other';
+  units: number;
+  isMe?: boolean;
+}
+// Taken out of the estate before it is divided. `payTo` = an heir id (e.g. a reimbursement) or undefined (paid out).
+export interface InheritanceDeduction {
+  id: string; label: string; amount: number;
+  kind: 'fee' | 'tax' | 'reserve' | 'reimbursement' | 'other';
+  payTo?: string;
+  percent?: number;                          // if set, amount = total × percent / 100 (e.g. tax)
+}
+export interface InheritanceInstallment {
+  id: string; date: string; amount: number;
+  received: boolean; note?: string;
+}
+// Money one heir passes to another (e.g. a sibling lends me part of their share).
+export interface InheritanceLoan { id: string; fromId: string; toId: string; amount: number; repaid?: boolean; note?: string }
+// Who is paid how much from which installment. `to` = heir id or deduction id.
+export interface InheritanceAllocation { id: string; installmentId: string; to: string; amount: number; done?: boolean }
+
+export interface InheritancePlan {
+  total: number;
+  deductions: InheritanceDeduction[];
+  heirs: InheritanceHeir[];
+  installments: InheritanceInstallment[];
+  loans: InheritanceLoan[];
+  allocations: InheritanceAllocation[];
+  myTarget?: number;                         // e.g. "I need 50 lac in hand"
+  unit: 'lac' | 'million' | 'pkr';           // display unit
+  updatedAt: string;
+}
+
 export interface AppData {
   settings: Settings; accounts: Account[]; transactions: Transaction[];
   costs: Cost[]; tasks: Task[];
+  inheritance?: InheritancePlan | null;      // schema v3
 }

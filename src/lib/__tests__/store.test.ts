@@ -16,7 +16,7 @@ describe('store + seed + persistence (CP2)', () => {
     expect(state.settings.rates.effective).toBe(300);
     expect(state.settings.defaultConversionMode).toBe('effective');
     expect(state.settings.phases.length).toBe(7);
-    expect(state.settings.categories.length).toBe(8);
+    expect(state.settings.categories.length).toBe(9);
     expect(state.costs.length).toBe(10);
     expect(state.tasks.length).toBe(12);
 
@@ -108,7 +108,7 @@ describe('store + seed + persistence (CP2)', () => {
   it('exports JSON and merges seed-format JSON via importJSON', () => {
     const s = useStore.getState();
     const exported = s.exportJSON();
-    expect(exported.schemaVersion).toBe(2);
+    expect(exported.schemaVersion).toBe(3);
     expect(exported.costs.length).toBe(10);
 
     const mergeResult = s.importJSON(
@@ -139,9 +139,31 @@ describe('store + seed + persistence (CP2)', () => {
     expect(useStore.getState().costs.length).toBe(11);
   });
 
+  it('merge import adds new categories without dropping existing ones, and carries an inheritance plan', () => {
+    const before = useStore.getState().settings.categories.length;
+    const res = useStore.getState().importJSON(
+      {
+        categories: [{ key: 'hobby', name: 'Hobby', color: '#000000', icon: 'Package' }],
+        costs: [{ name: 'Synthetic gadget', category: 'hobby', money: { amount: 10, currency: 'USD' } }],
+        inheritance: {
+          total: 1000, deductions: [], heirs: [], installments: [], loans: [], allocations: [],
+          unit: 'pkr', updatedAt: '2026-01-01T00:00:00.000Z',
+        },
+      },
+      'merge'
+    );
+    expect(res.ok).toBe(true);
+    const s = useStore.getState();
+    expect(s.settings.categories.length).toBe(before + 1);
+    expect(s.costs.find((c) => c.name === 'Synthetic gadget')?.categoryId).toBe('hobby');
+    expect(s.inheritance?.total).toBe(1000);
+    expect(s.exportJSON().inheritance?.total).toBe(1000);
+  });
+
   it('migrates partial or older persisted state cleanly', () => {
     const migrated = migrate({ costs: [{ id: 'c1', name: 'Test', money: { amount: 10, currency: 'USD' }, kind: 'fixed', categoryId: 'exam', phaseId: 'step3', priority: 'must', subCosts: [] }] }, 0);
-    expect(migrated.settings.schemaVersion).toBe(2);
+    expect(migrated.settings.schemaVersion).toBe(3);
+    expect(migrated.inheritance).toBeNull();
     expect(migrated.costs[0].maybe).toBe(false);
     expect(migrated.costs[0].included).toBe(true);
   });
