@@ -6,8 +6,8 @@
 |---|---|
 | Project | RubenYaro — USMLE cost + task planner, static SPA on GitHub Pages |
 | Stack | Vite · React 18 · TS strict · Tailwind v4 · Zustand(persist) · HashRouter · recharts · dnd-kit · cmdk · date-fns · vitest |
-| Current checkpoint | **All checkpoints complete (CP0–CP11 done, tagged `v1.0.0`)** |
-| Last updated | 2026-11-18 · by: CP11 release session |
+| Current checkpoint | **All checkpoints complete (CP0–CP11 + Redesign + Versioned Deploy `v1.1.0`)** |
+| Last updated | 2026-11-18 · by: v1.1.0 redesign & deploy session |
 | Build status | green (`npm run build && npm test && npm run lint` — 5 test files, 27 tests pass) |
 | Live URL | https://dawnsommer.github.io/RubenYaro/ |
 
@@ -30,8 +30,8 @@ Do them **in order**. One checkpoint ≈ one chat. Don't start the next until "D
 | CP11 | [x] | QA + polish + release | §11 | Tests green, Lighthouse ≥90/95, a11y pass, README usage, tagged v1.0.0 |
 
 ## 3. Active work  (only the current checkpoint — overwrite each session)
-- **Goal:** Complete — `v1.0.0` tagged.
-- **Next steps:** Optional user customizations, or push `main` + `v1.0.0` to GitHub to trigger `.github/workflows/deploy.yml` for GitHub Pages. Merge personal data locally in-app via `Settings → Data & backup → Import JSON (Merge)` selecting `private/my-data.json`.
+- **Goal:** Complete — `v1.1.0` deployed live to GitHub Pages (`https://dawnsommer.github.io/RubenYaro/`).
+- **Next steps:** Any future UI/feature requests: bump `version` in `package.json`, run `npm run build && npm test && npm run lint`, push to `main`, and click **Update & Reload App** in `Settings` on the live site.
 - **Blockers / questions for user:** none.
 
 ## 4. Decisions (append one line each; never delete)
@@ -74,7 +74,7 @@ Do them **in order**. One checkpoint ≈ one chat. Don't start the next until "D
 - —
 
 ## 8. File map (update when adding top-level modules)
-`docs/DESIGN.md` spec · `docs/seed.json` starter data · `private/my-data.json` personal data (gitignored) · `docs/mockup/index.html` visual ref · `src/types` · `src/lib` (currency, rates, format, parseAmount) · `src/store` · `src/components/{ui,layout}` · `src/features/*`
+`docs/DESIGN.md` spec · `docs/seed.json` starter data · `private/my-data.json` personal data (gitignored) · `docs/mockup/index.html` visual ref · `public/{sw.js,manifest.webmanifest,icon.svg}` · `src/types` · `src/lib` (currency, rates, format, parseAmount, dates, csv, version) · `src/store` (useStore, selectors, migrations, seed) · `src/components/{ui,layout}` · `src/features/{dashboard,costs,accounts,tasks,planner,settings}`
 
 ---
 ## PROTOCOL (mandatory for every chat)
