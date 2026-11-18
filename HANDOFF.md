@@ -1,0 +1,78 @@
+# HANDOFF — StepFund (single source of truth between chats)
+> **Every new chat: read this file first, then only the DESIGN.md sections listed for the current checkpoint.** Keep this file ≤ 150 lines. Spec = `docs/DESIGN.md` (§ refs below). Visual ref = `docs/mockup/index.html`.
+
+## 1. Snapshot
+| Key | Value |
+|---|---|
+| Project | StepFund — USMLE cost + task planner, static SPA on GitHub Pages |
+| Stack | Vite · React 18 · TS strict · Tailwind v4 · Zustand(persist) · HashRouter · recharts · dnd-kit · cmdk · date-fns · vitest |
+| Current checkpoint | **CP0 — not started** |
+| Last updated | 2026-11-18 · by: design session |
+| Build status | n/a |
+| Live URL | n/a (set after CP0 deploy) |
+
+## 2. Checkpoints  (`[ ]` todo · `[~]` in progress · `[x]` done)
+Do them **in order**. One checkpoint ≈ one chat. Don't start the next until "Done when" passes.
+
+| # | Status | Checkpoint | Read | Done when |
+|---|---|---|---|---|
+| CP0 | [ ] | Scaffold + deploy pipeline | §2, §10 | `npm run dev/build/test` work; `deploy.yml` deploys to Pages; HashRouter with 6 empty routes |
+| CP1 | [ ] | Design tokens + UI kit + AppShell | §7, §3, mockup | tokens.css light/dark; all §7.4 components; Sidebar/BottomNav/RateBar shell (static values) responsive 360–1440 |
+| CP2 | [ ] | Types + store + persistence + seed | §4, §9, seed.json | `types/index.ts` = §4; store CRUD for all entities; persist key `stepfund:v1` + migrate(); export/import JSON; seed loader (all seeded costs `verify:true`) |
+| CP3 | [ ] | Currency engine + rates + Amount/MoneyInput | §5, §6.0, §7.4 | `currency.ts` all formulas + tests green; `rates.ts` primary→fallback→cache 12h→manual; RateBar live & editable; `Amount` + `MoneyInput` (parses `1.2k`, `3 lakh`, `450*3`) |
+| CP4 | [ ] | Accounts + ledger | §6.3, §5.4 | CRUD, deposit/withdraw/transfer (cross-currency), balances, reserved, ledger view, sparkline |
+| CP5 | [ ] | Costs (core) | §6.2, §4 selectors | CRUD, sub-costs (expand, Σ, include toggles), temporary, recurring, included toggle, archive, drag reorder, views: phase/category/table |
+| CP6 | [ ] | Payments + statuses + Timeline view | §6.2 tabs 3–4, §4 | Record payment from cost/account; status auto (Paid/Partial/Due soon/Overdue); Breakdown tab; Timeline view; CSV export |
+| CP7 | [ ] | Dashboard | §6.1 | All 9 blocks with real selectors; onboarding empty state |
+| CP8 | [ ] | Tasks + key dates | §6.4, §6.6 Journey | List/Board/Upcoming, quick-add syntax, checklist, progress trackers, linked cost prompt, undo, countdowns, starter checklist |
+| CP9 | [ ] | Planner | §6.5 | Affordability, savings goal + cash-flow chart, rate what-if, converter, scenarios |
+| CP10 | [ ] | Settings + ⌘K + privacy + PWA | §6.6, §6.7, §8, §9 | All settings sections; palette; shortcuts; privacy blur; snapshots; backup nudge; offline PWA |
+| CP11 | [ ] | QA + polish + release | §11 | Tests green, Lighthouse ≥90/95, a11y pass, README usage, tagged v1.0.0 |
+
+## 3. Active work  (only the current checkpoint — overwrite each session)
+- **Goal:** CP0
+- **Next steps:** 1) `npm create vite@latest . -- --template react-ts` 2) add deps (§2) 3) Tailwind v4 via `@tailwindcss/vite` 4) `vite.config.ts` base from `VITE_BASE` 5) `.github/workflows/deploy.yml` (build with `VITE_BASE=/${{ github.event.repository.name }}/`, upload `dist`, deploy-pages) 6) HashRouter + placeholder pages 7) vitest sample test.
+- **Blockers / questions for user:** none.
+
+## 4. Decisions (append one line each; never delete)
+- D1 Local-first, no backend; localStorage via Zustand persist. Repo holds no personal data.
+- D2 HashRouter (GitHub Pages has no SPA fallback).
+- D3 Money stored as entered `{amount,currency}`; conversion only in selectors/display.
+- D4 Canonical comparison currency = PKR. Default conversion mode = `effective` (USD × 300).
+- D5 Three modes: market (live/manual), effective (flat 300), detailed (market + tax % or fixed PKR).
+- D6 Rate source: open.er-api.com → fallback fawazahmed0 currency-api (jsdelivr) → cached → manual.
+- D7 Cost with sub-costs: parent total = Σ included sub-costs (parent `money` ignored).
+- D8 Seed values are placeholders (`verify:true`); user enters real numbers in-app.
+
+## 5. Session log (keep last 3; compress older into §6 as one line)
+- **S0 · 2026-11-18 · Design** — Wrote DESIGN.md, seed.json, mockup, HANDOFF/AGENTS/GEMINI. No code yet.
+
+## 6. History (one line per old session)
+- —
+
+## 7. Known issues / tech debt
+- —
+
+## 8. File map (update when adding top-level modules)
+`docs/DESIGN.md` spec · `docs/seed.json` starter data · `docs/mockup/index.html` visual ref · `src/types` · `src/lib` (currency, rates, format, parseAmount) · `src/store` · `src/components/{ui,layout}` · `src/features/*`
+
+---
+## PROTOCOL (mandatory for every chat)
+**Start of chat**
+1. Read `HANDOFF.md` fully. Read only the DESIGN.md § listed for the current CP.
+2. `git log --oneline -5` and `git status` to confirm state matches §1/§3. If mismatch, trust the code, fix HANDOFF.
+3. Mark the CP `[~]`, restate goal in one line, then work.
+
+**During**
+- Small commits: `cpN: <what>` (e.g. `cp3: add detailed-mode inverse`).
+- Don't refactor outside the CP scope. Don't change §4 types without adding a migration + a Decision line.
+- If context is getting long: stop at a green build, run the End protocol, tell the user "Checkpoint saved — continue in a new chat."
+
+**End of chat (always, even if unfinished)**
+1. `npm run build && npm test` — note result in §1 Build status.
+2. Update §1 (current CP, date), §2 status, overwrite §3 with exact next steps (file + function level), append to §4/§7 if needed.
+3. Add a §5 entry (≤ 2 lines). If §5 has > 3 entries, move the oldest to §6 as one line.
+4. Commit: `handoff: CPn <status>`.
+
+**Kickoff prompt for a new chat (user pastes this):**
+> Continue the StepFund project. Follow the PROTOCOL in `HANDOFF.md` exactly: read HANDOFF.md, then only the DESIGN.md sections for the current checkpoint, verify git state, complete the checkpoint, and update HANDOFF.md before ending.

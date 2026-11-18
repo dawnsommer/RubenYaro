@@ -1,0 +1,183 @@
+<!doctype html>
+<html lang="en" class="">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>StepFund — Visual Mockup (reference only)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<script src="https://cdn.tailwindcss.com"></script>
+<script>tailwind.config = { darkMode: 'class' }</script>
+<style>
+  :root{--bg:#F7F7F5;--surface:#FFF;--surface-2:#F1F1EF;--border:#E7E7E4;--text:#111113;--muted:#6B6B73;--accent:#4F46E5;--accent-soft:#EEF0FF;--pos:#059669;--neg:#E11D48;--warn:#D97706}
+  .dark{--bg:#0A0A0B;--surface:#131316;--surface-2:#1B1B1F;--border:#26262B;--text:#F4F4F5;--muted:#9A9AA3;--accent:#818CF8;--accent-soft:#1E1B4B;--pos:#34D399;--neg:#FB7185;--warn:#FBBF24}
+  body{font-family:Inter,system-ui,sans-serif;background:var(--bg);color:var(--text)}
+  .num{font-variant-numeric:tabular-nums}
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:16px}
+  .muted{color:var(--muted)} .bd{border-color:var(--border)} .s2{background:var(--surface-2)}
+  .acc{color:var(--accent)} .bg-acc{background:var(--accent)} .bg-acc-soft{background:var(--accent-soft)}
+  .pos{color:var(--pos)} .neg{color:var(--neg)} .warn{color:var(--warn)}
+  .chip{display:inline-flex;align-items:center;gap:4px;border-radius:999px;padding:2px 8px;font-size:11px;font-weight:500;border:1px solid var(--border)}
+  .chip-est{border:1px dashed var(--warn);color:var(--warn)}
+  .label{font-size:11px;font-weight:500;letter-spacing:.04em;text-transform:uppercase;color:var(--muted)}
+  .privacy .amt{filter:blur(6px)}
+  svg.i{width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+</style>
+</head>
+<body class="min-h-screen">
+<div class="flex min-h-screen">
+  <!-- Sidebar -->
+  <aside class="hidden lg:flex w-60 flex-col gap-1 p-4 border-r bd" style="background:var(--surface)">
+    <div class="flex items-center gap-2 px-2 pb-6 pt-1">
+      <div class="w-8 h-8 rounded-xl bg-acc grid place-items-center text-white font-bold">S</div>
+      <span class="font-semibold">StepFund</span>
+    </div>
+    <a class="flex items-center gap-3 px-3 py-2 rounded-xl bg-acc-soft acc font-medium text-sm"><svg class="i" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>Dashboard</a>
+    <a class="flex items-center gap-3 px-3 py-2 rounded-xl muted text-sm hover:s2"><svg class="i" viewBox="0 0 24 24"><path d="M4 2v20l3-2 3 2 3-2 3 2 3-2 1 1V2l-1 1-3-2-3 2-3-2-3 2-3-2z"/><path d="M8 8h8M8 12h8M8 16h5"/></svg>Costs</a>
+    <a class="flex items-center gap-3 px-3 py-2 rounded-xl muted text-sm"><svg class="i" viewBox="0 0 24 24"><path d="M3 7a2 2 0 0 1 2-2h14v4"/><path d="M3 7v12a2 2 0 0 0 2 2h16V9H5a2 2 0 0 1-2-2z"/><circle cx="16" cy="15" r="1"/></svg>Accounts</a>
+    <a class="flex items-center gap-3 px-3 py-2 rounded-xl muted text-sm"><svg class="i" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="m8 12 3 3 5-6"/></svg>Tasks</a>
+    <a class="flex items-center gap-3 px-3 py-2 rounded-xl muted text-sm"><svg class="i" viewBox="0 0 24 24"><path d="M3 3v18h18"/><path d="m7 15 4-4 3 3 5-6"/></svg>Planner</a>
+    <div class="flex-1"></div>
+    <a class="flex items-center gap-3 px-3 py-2 rounded-xl muted text-sm"><svg class="i" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19 12a7 7 0 0 0-.1-1.2l2-1.6-2-3.4-2.4 1a7 7 0 0 0-2-1.2L14 3h-4l-.5 2.6a7 7 0 0 0-2 1.2l-2.4-1-2 3.4 2 1.6A7 7 0 0 0 5 12c0 .4 0 .8.1 1.2l-2 1.6 2 3.4 2.4-1a7 7 0 0 0 2 1.2L10 21h4l.5-2.6a7 7 0 0 0 2-1.2l2.4 1 2-3.4-2-1.6c.1-.4.1-.8.1-1.2z"/></svg>Settings</a>
+  </aside>
+
+  <main class="flex-1 min-w-0">
+    <!-- Rate bar -->
+    <div class="sticky top-0 z-10 h-11 flex items-center gap-2 px-4 lg:px-8 border-b bd text-[13px] backdrop-blur" style="background:color-mix(in srgb,var(--bg) 85%,transparent)">
+      <button class="chip num"><span class="w-1.5 h-1.5 rounded-full" style="background:var(--pos)"></span>Live · 1 USD = ₨ 281.40 · 2h ago ⟳</button>
+      <button class="chip num">Card rate ₨ 300</button>
+      <button class="chip num hidden sm:inline-flex">Tax 5%</button>
+      <div class="flex-1"></div>
+      <div class="s2 rounded-full p-0.5 flex text-xs font-medium">
+        <button id="tPKR" class="px-3 py-1 rounded-full" style="background:var(--surface)">PKR</button>
+        <button id="tUSD" class="px-3 py-1 rounded-full muted">USD</button>
+      </div>
+      <button onclick="document.body.classList.toggle('privacy')" class="chip" aria-label="Privacy">👁</button>
+      <button onclick="document.documentElement.classList.toggle('dark')" class="chip" aria-label="Theme">◐</button>
+      <span class="chip hidden md:inline-flex muted">⌘K</span>
+    </div>
+
+    <div class="max-w-[1200px] mx-auto p-4 lg:p-8 space-y-4">
+      <div class="flex items-end justify-between">
+        <div><p class="label">Wednesday, 18 Nov</p><h1 class="text-2xl font-semibold mt-1">Dashboard</h1></div>
+        <button class="bg-acc text-white text-sm font-medium px-4 py-2 rounded-[10px]">+ Add</button>
+      </div>
+
+      <div class="grid grid-cols-12 gap-4">
+        <!-- Hero -->
+        <section class="card p-6 col-span-12 lg:col-span-8">
+          <p class="label">Funding status</p>
+          <div class="mt-2 flex items-baseline gap-3 flex-wrap">
+            <span class="text-[40px] leading-[44px] font-semibold neg num amt">₨ 380,000</span>
+            <span class="text-sm neg font-medium">short</span>
+            <span class="text-sm muted num amt">≈ $1,267</span>
+          </div>
+          <div class="mt-5 h-3 rounded-full s2 overflow-hidden flex">
+            <div style="width:24%;background:var(--pos)"></div>
+            <div style="width:54%;background:var(--accent)"></div>
+            <div style="width:22%;background:repeating-linear-gradient(45deg,var(--neg) 0 4px,transparent 4px 8px);opacity:.6"></div>
+          </div>
+          <div class="mt-3 flex flex-wrap gap-x-5 gap-y-1 text-xs muted num">
+            <span><b class="pos">●</b> Paid ₨ 0.6M</span><span><b class="acc">●</b> Funded ₨ 1.4M</span><span><b class="neg">●</b> Unfunded ₨ 0.38M</span><span>Plan ₨ 2.4M (range 2.2–2.7M)</span><span>Coverage 78%</span>
+          </div>
+        </section>
+        <section class="card p-6 col-span-12 lg:col-span-4">
+          <p class="label">Spending power</p>
+          <p class="text-3xl font-semibold mt-2 num amt">$ 4,650</p>
+          <p class="text-xs muted mt-1">PKR funds ÷ ₨300 card rate + real USD</p>
+          <div class="mt-4 pt-4 border-t bd flex justify-between text-sm"><span class="muted">Real USD held</span><span class="num amt font-medium">$ 500</span></div>
+        </section>
+
+        <!-- KPIs -->
+        <div class="col-span-12 grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div class="card p-4"><p class="label">Total funds</p><p class="text-xl font-semibold num mt-1 amt">₨ 1,395,000</p><p class="text-xs muted num amt">$ 4,958</p></div>
+          <div class="card p-4"><p class="label">Plan total</p><p class="text-xl font-semibold num mt-1 amt">₨ 2,375,000</p><p class="text-xs muted num amt">$ 7,917</p></div>
+          <div class="card p-4"><p class="label">Paid</p><p class="text-xl font-semibold num mt-1 pos amt">₨ 600,000</p><p class="text-xs muted num amt">$ 2,000</p></div>
+          <div class="card p-4"><p class="label">Remaining</p><p class="text-xl font-semibold num mt-1 amt">₨ 1,775,000</p><p class="text-xs muted num amt">$ 5,917</p></div>
+        </div>
+
+        <!-- Costs with sub-costs -->
+        <section class="card col-span-12 lg:col-span-7">
+          <div class="flex items-center justify-between p-5 pb-3"><h2 class="font-semibold">Costs · Step 1</h2><span class="text-xs muted">By phase ▾</span></div>
+          <div class="divide-y bd" style="border-color:var(--border)">
+            <div class="px-5 py-3">
+              <div class="flex items-center gap-3">
+                <span class="muted cursor-grab">⠿</span><span class="w-2 h-2 rounded-full" style="background:#6366F1"></span>
+                <div class="flex-1 min-w-0">
+                  <div class="flex items-center gap-2 flex-wrap"><span class="font-medium text-sm">▾ Step 1 exam</span><span class="chip">Fixed</span><span class="chip">Must</span><span class="chip warn" style="border-color:var(--warn)">Verify price</span></div>
+                  <p class="text-xs muted mt-0.5">Due 12 Feb · Σ of 2 sub-costs</p>
+                </div>
+                <div class="text-right"><p class="text-sm font-semibold num amt">₨ 360,000</p><p class="text-xs muted num amt">$ 1,200</p></div>
+              </div>
+              <div class="mt-2 ml-6 h-1.5 rounded-full s2"><div class="h-full rounded-full" style="width:60%;background:var(--pos)"></div></div>
+              <div class="mt-3 ml-7 pl-4 border-l-2 bd space-y-2">
+                <div class="flex items-center text-sm gap-3"><span class="flex-1">Exam fee</span><div class="w-24 h-1 rounded-full s2"><div class="h-full rounded-full bg-acc" style="width:83%"></div></div><span class="num w-24 text-right amt">₨ 300,000</span></div>
+                <div class="flex items-center text-sm gap-3"><span class="flex-1">Intl. test delivery surcharge</span><div class="w-24 h-1 rounded-full s2"><div class="h-full rounded-full bg-acc" style="width:17%"></div></div><span class="num w-24 text-right amt">₨ 60,000</span></div>
+                <div class="flex items-center text-sm gap-3 opacity-50"><span class="flex-1 line-through">Rescheduling buffer</span><div class="w-24"></div><span class="num w-24 text-right amt">₨ 15,000</span></div>
+                <button class="text-xs acc font-medium">+ Add sub-cost</button>
+              </div>
+            </div>
+            <div class="px-5 py-3 flex items-center gap-3">
+              <span class="muted">⠿</span><span class="w-2 h-2 rounded-full" style="background:#0EA5E9"></span>
+              <div class="flex-1"><div class="flex items-center gap-2 flex-wrap"><span class="font-medium text-sm">Step 1 Qbank</span><span class="chip chip-est">≈ Estimate</span><span class="chip">⏱ Temporary · 6 mo</span></div><p class="text-xs muted mt-0.5">₨ 105k – 180k range</p></div>
+              <div class="text-right"><p class="text-sm font-semibold num amt">₨ 135,000</p><p class="text-xs muted num amt">$ 450</p></div>
+            </div>
+            <div class="px-5 py-3 flex items-center gap-3">
+              <span class="muted">⠿</span><span class="w-2 h-2 rounded-full" style="background:#0EA5E9"></span>
+              <div class="flex-1"><div class="flex items-center gap-2 flex-wrap"><span class="font-medium text-sm">NBME self-assessments</span><span class="chip">↻ Monthly ×4</span></div><p class="text-xs muted mt-0.5">$60 each</p></div>
+              <div class="text-right"><p class="text-sm font-semibold num amt">₨ 72,000</p><p class="text-xs muted num amt">$ 240</p></div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Tasks -->
+        <section class="card p-5 col-span-12 lg:col-span-5">
+          <div class="flex items-center justify-between"><h2 class="font-semibold">Pending tasks</h2>
+            <div class="flex items-center gap-2 text-xs muted"><svg width="28" height="28" viewBox="0 0 36 36"><circle cx="18" cy="18" r="15" fill="none" stroke="var(--surface-2)" stroke-width="4"/><circle cx="18" cy="18" r="15" fill="none" stroke="var(--accent)" stroke-width="4" stroke-dasharray="40 94" transform="rotate(-90 18 18)" stroke-linecap="round"/></svg>18 / 42</div></div>
+          <input class="mt-4 w-full s2 rounded-[10px] px-3 py-2 text-sm outline-none" placeholder="Add a task…  #step1 !must @2026-12-10" />
+          <ul class="mt-3 space-y-1">
+            <li class="flex items-start gap-3 py-2"><span class="mt-0.5 w-[18px] h-[18px] rounded-full border-2 bd"></span><div class="flex-1"><p class="text-sm">Book Step 1 test date (Prometric)</p><div class="flex gap-2 mt-1"><span class="chip neg" style="border-color:var(--neg)">Due in 3d</span><span class="chip">Step 1</span></div></div></li>
+            <li class="flex items-start gap-3 py-2"><span class="mt-0.5 w-[18px] h-[18px] rounded-full border-2 bd"></span><div class="flex-1"><p class="text-sm">Finish Step 1 Qbank</p><div class="flex items-center gap-2 mt-1.5"><div class="flex-1 h-1.5 rounded-full s2"><div class="h-full rounded-full bg-acc" style="width:33%"></div></div><span class="text-xs muted num">1,200 / 3,600</span><button class="chip">+40</button></div></div></li>
+            <li class="flex items-start gap-3 py-2"><span class="mt-0.5 w-[18px] h-[18px] rounded-full border-2 bd"></span><div class="flex-1"><p class="text-sm">Apply for Step 1 & eligibility period</p><div class="flex gap-2 mt-1"><span class="chip">☑ 2/5</span><span class="chip acc" style="border-color:var(--accent)">₨ 360k →</span></div></div></li>
+            <li class="flex items-start gap-3 py-2 opacity-50"><span class="mt-0.5 w-[18px] h-[18px] rounded-full bg-acc text-white text-[11px] grid place-items-center">✓</span><p class="text-sm line-through">Create ECFMG / USMLE ID</p></li>
+          </ul>
+        </section>
+
+        <!-- Accounts strip -->
+        <section class="col-span-12 lg:col-span-8">
+          <div class="flex items-center justify-between mb-2"><h2 class="font-semibold">Accounts</h2><span class="text-xs acc font-medium">Transfer ⇄</span></div>
+          <div class="flex gap-3 overflow-x-auto pb-1">
+            <div class="card p-4 min-w-[200px]"><p class="text-xs muted">🏦 Main bank · PKR</p><p class="text-lg font-semibold num mt-1 amt">₨ 950,000</p><p class="text-xs muted num amt">Reserved ₨ 50,000</p></div>
+            <div class="card p-4 min-w-[200px]"><p class="text-xs muted">💵 Cash · PKR</p><p class="text-lg font-semibold num mt-1 amt">₨ 300,000</p><p class="text-xs muted num amt">≈ $1,000 @300</p></div>
+            <div class="card p-4 min-w-[200px]"><p class="text-xs muted">💳 USD card · USD</p><p class="text-lg font-semibold num mt-1 amt">$ 500</p><p class="text-xs muted num amt">≈ ₨ 140,700</p></div>
+            <div class="card p-4 min-w-[160px] grid place-items-center muted text-sm border-dashed">+ Account</div>
+          </div>
+        </section>
+        <!-- Countdowns -->
+        <section class="card p-5 col-span-12 lg:col-span-4">
+          <h2 class="font-semibold">Countdowns</h2>
+          <div class="mt-3 flex flex-wrap gap-2">
+            <span class="chip text-sm py-1 px-3 bg-acc-soft acc" style="border:0">Step 1 · 74 days</span>
+            <span class="chip text-sm py-1 px-3 warn" style="border-color:var(--warn)">Eligibility ends · 210 days</span>
+            <span class="chip text-sm py-1 px-3">ERAS opens · 290 days</span>
+          </div>
+        </section>
+
+        <!-- Converter / breakdown -->
+        <section class="card p-5 col-span-12">
+          <div class="flex items-center justify-between"><h2 class="font-semibold">Quick converter</h2>
+            <div class="s2 rounded-full p-0.5 flex text-xs font-medium"><span class="px-3 py-1 muted">Market</span><span class="px-3 py-1 muted">Card 300</span><span class="px-3 py-1 rounded-full" style="background:var(--surface)">Detailed</span></div></div>
+          <div class="mt-4 grid md:grid-cols-[1fr_auto_1fr] gap-3 items-center">
+            <div class="s2 rounded-[10px] px-3 py-2 flex items-center gap-2"><input class="bg-transparent flex-1 outline-none num text-lg" value="1,000" /><span class="chip">USD</span></div>
+            <span class="muted text-center">⇄</span>
+            <div class="s2 rounded-[10px] px-3 py-2 flex items-center gap-2"><input class="bg-transparent flex-1 outline-none num text-lg" value="295,470" /><span class="chip">PKR</span></div>
+          </div>
+          <p class="mt-3 text-sm muted num">$1,000 × ₨281.40 = ₨281,400 &nbsp;+&nbsp; tax 5% ₨14,070 &nbsp;=&nbsp; <b style="color:var(--text)">₨295,470</b> &nbsp;·&nbsp; at card rate: ₨300,000</p>
+        </section>
+      </div>
+      <p class="text-center text-xs muted py-6">Static design reference for StepFund — not production code. Toggle ◐ for dark mode, 👁 for privacy blur.</p>
+    </div>
+  </main>
+</div>
+</body>
+</html>
