@@ -49,13 +49,15 @@ Do them **in order**. One checkpoint ≈ one chat. Don't start the next until "D
 - D12 `variants` + `activeVariantId` for alternative pricing (Flights: round trip vs separate one-ways).
 - D13 Sanity check at card rate 300 (for tests): confirmed plan ₨4,346,500 (+ Visa Interview ₨60,000 = ₨4,406,500) → surplus ₨393,500 vs ₨4.8M; maybes +₨456,000 → short ₨62,500.
 - D14 Added `pinned?: boolean` on `Task` + schema v2 migration; Dashboard top shows pinned upcoming tasks; Tasks page has manual drag/arrow sorting & pin buttons; UI shows actual market rate primary with smaller `×300` after-tax rate alongside; added `Visa Interview` (₨60k = ₨50k plane ticket + ₨10k hotel/food).
+- D15 Versioned deploy (`version.json` emitted at build time with version + git SHA + timestamp, network-first HTML in `sw.js`, and "Update & Reload App" button in Settings that unregisters stale SW/caches while preserving `rubenyaro:v1` localStorage).
 
 ## 5. Session log (keep last 3; compress older into §6 as one line)
+- **S14 · 2026-11-18 · Versioned Deploy** — Added build-time `version.json` manifest, `src/lib/version.ts`, network-first HTML caching in `sw.js`, and one-click "Update & Reload App" button in Settings.
 - **S13 · 2026-11-18 · Redesign** — Simplified UI & mobile UX, pinned tasks at top of Dashboard, manual task sorting + pin buttons, dual Market + `×300` after-tax rate display, top live-rate refresh button, and added `Visa Interview` (₨60k).
 - **S12 · 2026-11-18 · CP11** — Code-split Vite production bundle, wrote `README.md` usage guide, verified all 27 unit tests & strict TS build, and tagged `v1.0.0`.
-- **S11 · 2026-11-18 · CP10** — Built `SettingsPage.tsx` (6 sections, JSON import/merge, snapshots, backup nudge, RESET), `CommandPalette.tsx` (`⌘K` + shortcuts), and offline PWA (`manifest.webmanifest` + `sw.js`).
 
 ## 6. History (one line per old session)
+- **S11 · 2026-11-18 · CP10** — Built `SettingsPage.tsx` (6 sections, JSON import/merge, snapshots, backup nudge, RESET), `CommandPalette.tsx` (`⌘K` + shortcuts), and offline PWA (`manifest.webmanifest` + `sw.js`).
 - **S10 · 2026-11-18 · CP9** — Built `PlannerPage.tsx` with affordability check, savings goal + cash-flow chart, rate what-if sliders, quick converter, and scenario toggles.
 - **S9 · 2026-11-18 · CP8** — Built `TasksPage.tsx` with List/Board/Upcoming views, quick-add syntax, checklist, progress trackers (+10/+40), linked cost payment toast, Undo toast, and key dates countdowns.
 - **S8 · 2026-11-18 · CP7** — Built `DashboardPage.tsx` with all 9 blocks, real selectors, maybes toggle, category donut, phase bars, and 3-step onboarding state.

@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import {
   RefreshCw,
   Download,
@@ -7,10 +7,17 @@ import {
   Plus,
   RotateCcw,
   AlertTriangle,
+  Sparkles,
 } from 'lucide-react';
 import { useStore, getSnapshots } from '../../store/useStore';
 import { fetchLiveMarketRate, formatRelativeRateAge } from '../../lib/rates';
 import { buildCostsCsv, downloadTextFile } from '../../lib/csv';
+import {
+  CURRENT_BUILD,
+  VersionManifest,
+  checkRemoteVersion,
+  forceUpdateApp,
+} from '../../lib/version';
 import { ConversionMode, Currency, KeyDate, Settings } from '../../types';
 import {
   Button,
@@ -40,6 +47,23 @@ export function SettingsPage() {
 
   const [section, setSection] = useState<SettingsSection>('currency');
   const [refreshing, setRefreshing] = useState(false);
+
+  // Version & App Update state
+  const [checkingVersion, setCheckingVersion] = useState(false);
+  const [remoteVersion, setRemoteVersion] = useState<VersionManifest | null>(null);
+  const [updateAvailable, setUpdateAvailable] = useState(false);
+
+  const runVersionCheck = async () => {
+    setCheckingVersion(true);
+    const res = await checkRemoteVersion();
+    setCheckingVersion(false);
+    setRemoteVersion(res.remote);
+    setUpdateAvailable(res.hasUpdate);
+  };
+
+  useEffect(() => {
+    void runVersionCheck();
+  }, []);
 
   // New Key Date
   const [kdLabel, setKdLabel] = useState('');
@@ -134,9 +158,38 @@ export function SettingsPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <p className="label-micro">Preferences &amp; Backup</p>
-        <h1 className="text-[24px] leading-[32px] font-semibold mt-1">Settings</h1>
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <p className="label-micro">Preferences &amp; Backup</p>
+          <div className="flex items-center gap-2.5 mt-1">
+            <h1 className="text-[24px] leading-[32px] font-semibold">Settings</h1>
+            <Chip variant={updateAvailable ? 'warning' : 'accent'}>
+              v{CURRENT_BUILD.version} · {CURRENT_BUILD.gitSha}
+            </Chip>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <Button
+            size="sm"
+            variant="secondary"
+            onClick={() => void runVersionCheck()}
+            disabled={checkingVersion}
+          >
+            <RefreshCw className={`w-3.5 h-3.5 ${checkingVersion ? 'animate-spin' : ''}`} />
+            {checkingVersion ? 'Checking…' : 'Check for update'}
+          </Button>
+          <Button
+            size="sm"
+            variant={updateAvailable ? 'primary' : 'secondary'}
+            onClick={() => void forceUpdateApp()}
+          >
+            <Sparkles className="w-3.5 h-3.5" />
+            {updateAvailable
+              ? `Update to ${remoteVersion?.gitSha ?? 'latest'}`
+              : 'Update & Reload App'}
+          </Button>
+        </div>
       </div>
 
       <div className="grid grid-cols-12 gap-6">
@@ -716,19 +769,54 @@ export function SettingsPage() {
 
           {/* 6. ABOUT */}
           {section === 'about' && (
-            <Card title="About RubenYaro">
-              <div className="space-y-2 text-sm text-[var(--text-muted)]">
-                <p>
-                  <strong className="text-[var(--text)]">RubenYaro v1.0.0</strong> —
-                  USMLE Journey Cost &amp; Task Planner
-                </p>
-                <p>
+            <Card title="About &amp; App Version">
+              <div className="space-y-4 text-sm">
+                <div className="p-3.5 rounded-[12px] bg-[var(--surface-2)] border border-[var(--border)] space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs text-[var(--text-muted)]">
+                      Installed version
+                    </span>
+                    <span className="font-semibold num">
+                      v{CURRENT_BUILD.version} ({CURRENT_BUILD.gitSha})
+                    </span>
+                  </div>
+                  {CURRENT_BUILD.buildTime && (
+                    <div className="flex items-center justify-between text-xs text-[var(--text-muted)]">
+                      <span>Built at</span>
+                      <span className="num">{CURRENT_BUILD.buildTime}</span>
+                    </div>
+                  )}
+                  {remoteVersion && (
+                    <div className="flex items-center justify-between text-xs text-[var(--text-muted)] pt-1 border-t border-[var(--border)]">
+                      <span>Latest deployed on server</span>
+                      <span className="num font-medium text-[var(--text)]">
+                        v{remoteVersion.version} ({remoteVersion.gitSha})
+                      </span>
+                    </div>
+                  )}
+                </div>
+
+                <div className="flex flex-wrap items-center gap-2">
+                  <Button
+                    variant="secondary"
+                    onClick={() => void runVersionCheck()}
+                    disabled={checkingVersion}
+                  >
+                    <RefreshCw
+                      className={`w-4 h-4 ${checkingVersion ? 'animate-spin' : ''}`}
+                    />
+                    Check for updates
+                  </Button>
+                  <Button onClick={() => void forceUpdateApp()}>
+                    <Sparkles className="w-4 h-4" />
+                    Force Update &amp; Clear App Cache
+                  </Button>
+                </div>
+
+                <p className="text-xs text-[var(--text-muted)]">
                   Schema version: <code>{settings.schemaVersion}</code> · Persist key:{' '}
-                  <code>rubenyaro:v1</code>
-                </p>
-                <p>
-                  Local-first static SPA. All personal financial data stays in your
-                  browser&apos;s localStorage and is never sent to any server.
+                  <code>rubenyaro:v1</code>. Updating the app clears stale browser/PWA
+                  asset caches while keeping all your saved financial data intact.
                 </p>
               </div>
             </Card>

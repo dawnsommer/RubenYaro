@@ -9,6 +9,7 @@ import {
   PanelLeftClose,
   PanelLeftOpen,
 } from 'lucide-react';
+import { CURRENT_BUILD } from '../../lib/version';
 
 export interface SidebarProps {
   collapsed: boolean;
@@ -104,7 +105,14 @@ export function Sidebar({ collapsed, onToggleCollapse }: SidebarProps) {
         }
       >
         <Settings2 className="w-[18px] h-[18px] shrink-0" />
-        {!collapsed && <span>Settings</span>}
+        {!collapsed && (
+          <div className="flex items-center justify-between flex-1 min-w-0">
+            <span>Settings</span>
+            <span className="text-[10px] text-[var(--text-muted)] num">
+              v{CURRENT_BUILD.version}
+            </span>
+          </div>
+        )}
       </NavLink>
     </aside>
   );
