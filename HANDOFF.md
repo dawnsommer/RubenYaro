@@ -6,8 +6,8 @@
 |---|---|
 | Project | RubenYaro — USMLE cost + task planner, static SPA on GitHub Pages |
 | Stack | Vite · React 18 · TS strict · Tailwind v4 · Zustand(persist) · HashRouter · recharts · dnd-kit · cmdk · date-fns · vitest |
-| Current checkpoint | **CP10 — in progress** (CP0–CP9 done) |
-| Last updated | 2026-11-18 · by: CP9 session |
+| Current checkpoint | **CP11 — in progress** (CP0–CP10 done) |
+| Last updated | 2026-11-18 · by: CP10 session |
 | Build status | green (`npm run build && npm test`) |
 | Live URL | n/a (set after CP0 deploy) |
 
@@ -26,12 +26,12 @@ Do them **in order**. One checkpoint ≈ one chat. Don't start the next until "D
 | CP7 | [x] | Dashboard | §6.1 | All 9 blocks with real selectors; onboarding empty state |
 | CP8 | [x] | Tasks + key dates | §6.4, §6.6 Journey | List/Board/Upcoming, quick-add syntax, checklist, progress trackers, linked cost prompt, undo, countdowns, starter checklist |
 | CP9 | [x] | Planner | §6.5 | Affordability, savings goal + cash-flow chart, rate what-if, converter, scenarios |
-| CP10 | [~] | Settings + ⌘K + privacy + PWA | §6.6, §6.7, §8, §9 | All settings sections; palette; shortcuts; privacy blur; snapshots; backup nudge; offline PWA |
-| CP11 | [ ] | QA + polish + release | §11 | Tests green, Lighthouse ≥90/95, a11y pass, README usage, tagged v1.0.0 |
+| CP10 | [x] | Settings + ⌘K + privacy + PWA | §6.6, §6.7, §8, §9 | All settings sections; palette; shortcuts; privacy blur; snapshots; backup nudge; offline PWA |
+| CP11 | [~] | QA + polish + release | §11 | Tests green, Lighthouse ≥90/95, a11y pass, README usage, tagged v1.0.0 |
 
 ## 3. Active work  (only the current checkpoint — overwrite each session)
-- **Goal:** CP10 — Settings + ⌘K + privacy + PWA (§6.6, §6.7, §8, §9)
-- **Next steps:** 1) Implement `src/features/settings/SettingsPage.tsx` (Currency & rates, Journey, Categories & Phases with reassign on delete, Appearance, Data with JSON export/import + seed merge + snapshots + backup nudge + RESET confirmation, About) 2) Implement `src/components/layout/CommandPalette.tsx` + keyboard shortcuts (`⌘K`, `c`, `p`, `n`) in `AppShell.tsx` 3) Configure PWA manifest & service worker.
+- **Goal:** CP11 — QA + polish + release (§11)
+- **Next steps:** 1) Code-split bundle chunks in `vite.config.ts` for fast mobile performance 2) Update `README.md` with usage instructions 3) Run full `npm run build && npm test && npm run lint` 4) Tag `v1.0.0` and finalize `HANDOFF.md`.
 - **Blockers / questions for user:** none.
 
 ## 4. Decisions (append one line each; never delete)
@@ -50,11 +50,12 @@ Do them **in order**. One checkpoint ≈ one chat. Don't start the next until "D
 - D13 Sanity check at card rate 300 (for tests): confirmed plan ₨4,346,500 → surplus ₨453,500 vs ₨4.8M; maybes +₨456,000 → short ₨2,500.
 
 ## 5. Session log (keep last 3; compress older into §6 as one line)
+- **S11 · 2026-11-18 · CP10** — Built `SettingsPage.tsx` (6 sections, JSON import/merge, snapshots, backup nudge, RESET), `CommandPalette.tsx` (`⌘K` + shortcuts), and offline PWA (`manifest.webmanifest` + `sw.js`).
 - **S10 · 2026-11-18 · CP9** — Built `PlannerPage.tsx` with affordability check, savings goal + cash-flow chart, rate what-if sliders, quick converter, and scenario toggles.
 - **S9 · 2026-11-18 · CP8** — Built `TasksPage.tsx` with List/Board/Upcoming views, quick-add syntax, checklist, progress trackers (+10/+40), linked cost payment toast, Undo toast, and key dates countdowns.
-- **S8 · 2026-11-18 · CP7** — Built `DashboardPage.tsx` with all 9 blocks, real selectors, maybes toggle, category donut, phase bars, and 3-step onboarding state.
 
 ## 6. History (one line per old session)
+- **S8 · 2026-11-18 · CP7** — Built `DashboardPage.tsx` with all 9 blocks, real selectors, maybes toggle, category donut, phase bars, and 3-step onboarding state.
 - **S7 · 2026-11-18 · CP5/CP6** — Implemented `CostsPage.tsx` + `CostDetailSheet.tsx` (sub-costs, variants switcher, maybe/included, temporary/recurring, drag reorder, 4 views, payments, Breakdown tab, CSV export).
 - **S6 · 2026-11-18 · CP4** — Built `selectors.ts` (verified D13 sanity test), `AccountsPage.tsx` with CRUD, cross-currency transfers, sparklines, and ledger view.
 - **S5 · 2026-11-18 · CP3** — Implemented `currency.ts`, `rates.ts` (primary→fallback→12h cache→manual), `parseAmount.ts`, `format.ts`, wired `Amount`/`MoneyInput`/`RateBar`.
