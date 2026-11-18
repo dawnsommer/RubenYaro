@@ -1,4 +1,4 @@
-# StepFund — USMLE Journey Cost & Task Planner
+# RubenYaro — USMLE Journey Cost & Task Planner
 **Design Specification v1.0** · Target: static SPA on GitHub Pages · Implementer: Gemini (see `HANDOFF.md`)
 
 > Purpose: give one clear picture of **how much money I have, where it is, what the USMLE journey will cost, what's paid, what's left, and what work is pending.**
@@ -163,7 +163,15 @@ export interface CostItemBase {
   note?: string; url?: string;
 }
 
-export interface SubCost extends CostItemBase { order: number; included: boolean }
+export interface SubCost extends CostItemBase { order: number; included: boolean; maybe: boolean }
+
+// Alternative ways to pay for the same thing, only ONE active (e.g. Flights: "Round trip" vs "Separate one-ways")
+export interface CostVariant {
+  id: string; name: string;
+  money: Money; range?: { low: number; high: number };
+  subCosts: SubCost[];                         // same Σ rule as Cost
+  note?: string;
+}
 
 export interface Cost extends CostItemBase {
   categoryId: string; phaseId: string; priority: Priority;
@@ -171,6 +179,9 @@ export interface Cost extends CostItemBase {
   temporary?: { start: string; end: string };  // only counts in plan inside window; auto-flag "expired"
   recurrence?: Recurrence;
   subCosts: SubCost[];                         // if non-empty → parent total = Σ included sub-costs
+  variants?: CostVariant[];                    // if present → cost total = active variant total (money/subCosts on Cost ignored)
+  activeVariantId?: string;
+  maybe: boolean;                              // uncertain cost ("maybe"): counted separately (see selectors)
   included: boolean;                           // toggle in/out of plan (what-if)
   archived: boolean; order: number; tags: string[];
   verify?: boolean;                            // seeded placeholder: show "verify price" chip
@@ -199,13 +210,17 @@ export interface AppData {
 ### Derived values (selectors, never stored)
 | Selector | Rule |
 |---|---|
-| `costOccurrenceTotal(cost)` | `subCosts.length ? Σ(included subCosts → PKR) : money → PKR` |
+| `costSource(cost)` | `variants?.length ? activeVariant : cost` (the thing whose money/subCosts are used) |
+| `costOccurrenceTotal(cost)` | `src = costSource(cost)`; `src.subCosts.length ? Σ(included && !maybe subCosts → PKR) : src.money → PKR` |
+| `costMaybeExtra(cost)` | Σ of included sub-costs with `maybe:true` (e.g. Job payment "+ maybe 36k") |
 | `costTotal(cost)` | occurrence total × (`recurrence?.occurrences ?? 1`) |
 | `costPaid(cost)` | Σ payment transactions with `costId` (converted to PKR at **effective** rate if account is USD… see §5.4) |
 | `costStatus(cost)` | `paid ≥ total` → **Paid**; `paid > 0` → **Partial**; due ≤ 14 days → **Due soon**; past due → **Overdue**; else **Planned** |
 | `accountBalance(acc)` | opening + deposits − withdrawals − payments ± transfers |
 | `totalFunds` | Σ balances of accounts with `includeInTotals && !archived`, minus `reserved` |
-| `planTotal` | Σ `costTotal` for `included && !archived && !expired` |
+| `planTotal` (confirmed) | Σ `costTotal` for `included && !archived && !expired && !maybe` |
+| `maybeTotal` | Σ `costTotal` of `maybe` costs + Σ `costMaybeExtra` of all costs (same filters) |
+| `planWithMaybes` | `planTotal + maybeTotal` — dashboard shows gap for **both** |
 | `remaining` | `planTotal − Σ costPaid` |
 | `coverage` | `totalFunds / remaining` (cap display at 100%+) |
 | `gap` | `totalFunds − remaining` (positive = surplus, negative = shortfall) |
@@ -278,6 +293,7 @@ Grid: 12 cols desktop, 1 col mobile. Order top → bottom:
    - Big number: **Gap** — green "₨ 420,000 surplus" or rose "₨ 380,000 short".
    - Horizontal stacked bar: `Paid | Funded remaining | Unfunded` against plan total.
    - Sub-line: "Plan ₨ 2.4M · Paid ₨ 0.6M · Funds ₨ 1.4M · Coverage 78%".
+   - Second line, muted: "**With maybes** (+₨ 456k): ₨ 2.5k short" — a toggle `Include maybes` switches the hero big number between the two scenarios.
    - If estimates have ranges: thin range marker "₨ 2.2M – 2.7M".
 2. **Spending power card** (span 4): `$ 4,650` you can spend via card at ₨300; plus "Real USD held $500".
 3. **KPI row** (4 small cards): Total funds · Plan total · Paid · Remaining. Each shows the secondary currency in muted small text below.
@@ -296,13 +312,15 @@ Grid: 12 cols desktop, 1 col mobile. Order top → bottom:
   - Left drag handle (reorder). Category colour dot. Chips: `Fixed`(neutral) / `Estimate`(amber dashed border), `Temporary` (clock icon, shows window), `Recurring ×6`, `Verify price` (seeded placeholders).
   - Right: primary amount in display currency, secondary muted; mini progress bar of paid %.
   - Toggle switch (subtle) for `included` — excluded rows render at 50% opacity with strikethrough total.
+  - **Maybe** chip (`?` icon, dotted outline, muted violet) for `maybe` costs/sub-costs; their amount shows prefixed `+` and in muted colour. Clicking the chip converts Maybe ⇄ Confirmed.
+  - **Variants** (cost has `variants`): a small segmented control under the name, e.g. `[Round trip ₨600k] [Separate ₨560k]`; tapping switches `activeVariantId` and totals animate. Cheapest variant gets a tiny "lowest" tag. Expanding shows the active variant's sub-costs (e.g. Outbound / Return).
 - **Expanded row (has sub-costs)**: chevron expands an indented list with a left guide line; each sub-cost shows amount, its own include toggle, and a mini proportional bar (share of parent). Inline "+ Add sub-cost" at the bottom. Parent amount becomes read-only "Σ of sub-costs" with an info tooltip.
 - **Timeline view**: vertical timeline grouped by month of `dueDate`; recurring costs show each occurrence; temporary costs show as a band spanning start→end.
 - **Table view**: dense spreadsheet-like (name, phase, category, kind, USD, PKR, paid, status, due) — inline editable cells, CSV export.
 
 **Cost detail sheet** (right side drawer 480px desktop / full-height bottom sheet mobile), tabs:
 1. **Details** — Name; **MoneyInput** (see §7.4); kind (Fixed/Estimate segmented) + optional low/high range; category; phase; priority; due date; temporary toggle → start/end; recurring toggle → frequency/interval/occurrences; conversion mode override (Default / Market / Card 300 / Detailed + tax override); URL; notes; tags.
-2. **Sub-costs** — sortable list, inline edit, totals footer, mini donut of composition.
+2. **Sub-costs & options** — sortable list, inline edit (each row: name, MoneyInput, include toggle, Maybe toggle), totals footer "₨ 57k + maybe ₨ 36k", mini donut of composition. "+ Add option" turns the cost into variants; options shown as side-by-side compare cards with "Use this" button.
 3. **Payments** — list of linked transactions + "Record payment" (choose account, amount auto-filled with remaining, date). Status auto-updates.
 4. **Breakdown** — the §5.3 breakdown for all three modes side-by-side so the user sees market vs card vs detailed difference.
 
@@ -337,7 +355,7 @@ Sections (left sub-nav on desktop, stacked on mobile):
 - **Journey**: target date, key dates list (add/edit/delete).
 - **Categories** & **Phases**: sortable editable lists (name, colour swatch picker of 10 preset colours, lucide icon picker for categories). Deleting one in use → must reassign.
 - **Appearance**: theme system/light/dark, compact density toggle.
-- **Data**: Export JSON · Import JSON (validate + preview counts + confirm replace/merge) · Export costs CSV · Load starter data · Reset all (type `RESET` to confirm). Show "Last backup: 5 days ago" nudge if > 7 days.
+- **Data**: Export JSON · Import JSON (validate + preview counts + confirm replace/merge; also accepts the **seed format** of `docs/seed.json`, so the user's private `private/my-data.json` can be merged in) · Export costs CSV · Load starter data · Reset all (type `RESET` to confirm). Show "Last backup: 5 days ago" nudge if > 7 days.
 - **About**: version, schema version, link to repo.
 
 ### 6.7 Command palette (⌘K / Ctrl K, also `/`)
@@ -409,11 +427,11 @@ Visual reference: open `docs/mockup/index.html` in a browser (static, not produc
 ---
 
 ## 9. Persistence, backup, privacy
-- Store: Zustand `persist`, key `stepfund:v1`, `version: schemaVersion`, `migrate()` function in `src/store/migrations.ts`.
+- Store: Zustand `persist`, key `rubenyaro:v1`, `version: schemaVersion`, `migrate()` function in `src/store/migrations.ts`.
 - Debounced write (300 ms). On load: validate shape; if corrupt → offer to restore last auto-snapshot.
-- **Auto-snapshots**: keep last 5 daily snapshots in localStorage key `stepfund:snapshots` (ring buffer).
-- Export file name: `stepfund-backup-YYYY-MM-DD.json` (full `AppData` + `exportedAt` + `schemaVersion`).
-- **Privacy**: repo is public on GitHub Pages — **never commit user data**; seed file contains only generic placeholders. `privacyMode` blur for screen sharing.
+- **Auto-snapshots**: keep last 5 daily snapshots in localStorage key `rubenyaro:snapshots` (ring buffer).
+- Export file name: `rubenyaro-backup-YYYY-MM-DD.json` (full `AppData` + `exportedAt` + `schemaVersion`).
+- **Privacy**: repo is public on GitHub Pages — **never commit user data**. `docs/seed.json` = journey/fee values only (public prices). Personal values (balances, loans, personal purchases) live in `private/my-data.json`, which is **gitignored** and loaded via Settings → Data → Import (merge). `privacyMode` blur for screen sharing.
 - Optional future (not v1): GitHub Gist sync with a user-supplied token.
 
 ---
@@ -426,6 +444,7 @@ Visual reference: open `docs/mockup/index.html` in a browser (static, not produc
 ├─ .github/workflows/deploy.yml
 ├─ HANDOFF.md  AGENTS.md  GEMINI.md  README.md
 ├─ docs/  DESIGN.md  seed.json  mockup/index.html
+├─ private/my-data.json      # gitignored personal data (import via Settings → Data)
 └─ src/
    ├─ main.tsx  App.tsx  routes.tsx
    ├─ styles/tokens.css  globals.css

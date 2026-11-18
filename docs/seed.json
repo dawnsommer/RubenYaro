@@ -1,5 +1,5 @@
 {
-  "_readme": "Generic starter data. ALL amounts are rough PLACEHOLDERS flagged verify:true — the user will replace them in-app. Never put personal data in this file (public repo). seed.ts maps this into full AppData types (adds ids, timestamps, order, defaults).",
+  "_readme": "RubenYaro journey starter data (public prices/estimates only — safe to commit). Personal values (balances, loans, personal purchases) live in private/my-data.json (gitignored) and are merged via Settings → Data → Import. seed.ts maps this format into full AppData (adds ids, timestamps, order, defaults: maybe=false, included=true, kind='fixed', priority='must'). Only items with verify:true are placeholders.",
   "settings": {
     "displayCurrency": "PKR",
     "rates": { "market": 280, "marketSource": "auto", "effective": 300 },
@@ -7,68 +7,61 @@
     "defaultTax": { "kind": "percent", "value": 0 }
   },
   "phases": [
-    { "key": "step1", "name": "Step 1", "color": "#6366F1" },
-    { "key": "step2", "name": "Step 2 CK", "color": "#0EA5E9" },
-    { "key": "ecfmg", "name": "ECFMG / OET / Pathways", "color": "#14B8A6" },
-    { "key": "usce", "name": "USCE & Electives", "color": "#22C55E" },
-    { "key": "match", "name": "Residency Application (ERAS/Match)", "color": "#F97316" },
-    { "key": "step3", "name": "Step 3 (optional)", "color": "#A855F7" },
+    { "key": "ecfmg", "name": "ECFMG Pathways & Certification", "color": "#14B8A6" },
+    { "key": "step3", "name": "Step 3", "color": "#A855F7" },
+    { "key": "research", "name": "Research", "color": "#0EA5E9" },
+    { "key": "usa", "name": "USA stay & Observership", "color": "#22C55E" },
+    { "key": "match", "name": "Match (ERAS/NRMP) & Interviews", "color": "#F97316" },
+    { "key": "obligations", "name": "Obligations & Loans", "color": "#EF4444" },
     { "key": "general", "name": "General", "color": "#64748B" }
   ],
   "categories": [
     { "key": "exam", "name": "Exam fees", "color": "#6366F1", "icon": "FileCheck2" },
-    { "key": "prep", "name": "Prep resources", "color": "#0EA5E9", "icon": "BookOpen" },
     { "key": "apps", "name": "Applications", "color": "#F97316", "icon": "Send" },
-    { "key": "travel", "name": "Travel & visa", "color": "#EC4899", "icon": "Plane" },
+    { "key": "travel", "name": "Travel", "color": "#EC4899", "icon": "Plane" },
     { "key": "living", "name": "Living", "color": "#22C55E", "icon": "Home" },
+    { "key": "research", "name": "Research", "color": "#0EA5E9", "icon": "FlaskConical" },
+    { "key": "setup", "name": "Setup & gear", "color": "#EAB308", "icon": "Laptop" },
+    { "key": "loans", "name": "Loan repayments", "color": "#EF4444", "icon": "HandCoins" },
     { "key": "misc", "name": "Misc", "color": "#64748B", "icon": "Package" }
   ],
-  "accounts": [
-    { "name": "Main bank", "kind": "bank", "currency": "PKR", "openingBalance": 0 },
-    { "name": "Cash", "kind": "cash", "currency": "PKR", "openingBalance": 0 },
-    { "name": "USD card / account", "kind": "foreign", "currency": "USD", "openingBalance": 0 }
-  ],
+  "accounts": [],
   "costs": [
-    { "name": "ECFMG ID / certification application", "phase": "ecfmg", "category": "apps", "money": { "amount": 160, "currency": "USD" }, "kind": "fixed", "priority": "must" },
-    { "name": "Step 1 exam", "phase": "step1", "category": "exam", "money": { "amount": 1000, "currency": "USD" }, "kind": "fixed", "priority": "must",
-      "subCosts": [
-        { "name": "Exam fee", "money": { "amount": 1000, "currency": "USD" } },
-        { "name": "International test delivery surcharge", "money": { "amount": 200, "currency": "USD" } },
-        { "name": "Rescheduling buffer", "money": { "amount": 50, "currency": "USD" }, "included": false }
+    { "name": "ECFMG Pathways", "phase": "ecfmg", "category": "apps", "money": { "amount": 950, "currency": "USD" } },
+    { "name": "ECFMG Certification", "phase": "ecfmg", "category": "apps", "money": { "amount": 580, "currency": "USD" } },
+    { "name": "Step 3", "phase": "step3", "category": "exam", "money": { "amount": 955, "currency": "USD" } },
+    { "name": "Match application (100 programs)", "phase": "match", "category": "apps", "money": { "amount": 2430, "currency": "USD" }, "note": "ERAS fees for ~100 programs" },
+    { "name": "Flight tickets", "phase": "usa", "category": "travel", "kind": "estimate",
+      "activeVariant": "Round trip",
+      "variants": [
+        { "name": "Round trip", "money": { "amount": 600000, "currency": "PKR" }, "range": { "low": 500000, "high": 600000 } },
+        { "name": "Separate one-ways", "money": { "amount": 600000, "currency": "PKR" },
+          "subCosts": [
+            { "name": "Outbound (PK → US)", "money": { "amount": 300000, "currency": "PKR" }, "verify": true },
+            { "name": "Return (US → PK)", "money": { "amount": 300000, "currency": "PKR" }, "verify": true }
+          ] }
       ] },
-    { "name": "Step 1 Qbank subscription", "phase": "step1", "category": "prep", "money": { "amount": 450, "currency": "USD" }, "kind": "estimate", "range": { "low": 350, "high": 600 }, "priority": "must" },
-    { "name": "NBME self-assessments", "phase": "step1", "category": "prep", "money": { "amount": 60, "currency": "USD" }, "kind": "fixed", "priority": "should", "recurrence": { "frequency": "monthly", "interval": 1, "occurrences": 4 } },
-    { "name": "Step 2 CK exam", "phase": "step2", "category": "exam", "money": { "amount": 1000, "currency": "USD" }, "kind": "fixed", "priority": "must",
+    { "name": "5-month stay in the USA", "phase": "usa", "category": "living", "kind": "estimate", "money": { "amount": 1200, "currency": "USD" }, "recurrence": { "frequency": "monthly", "interval": 1, "occurrences": 5 }, "note": "$6,000 total ($1,200 × 5 months). Set start date when known." },
+    { "name": "Observership", "phase": "usa", "category": "apps", "money": { "amount": 500, "currency": "USD" }, "maybe": true, "priority": "should" },
+    { "name": "Research", "phase": "research", "category": "research", "money": { "amount": 80000, "currency": "PKR" },
       "subCosts": [
-        { "name": "Exam fee", "money": { "amount": 1000, "currency": "USD" } },
-        { "name": "International test delivery surcharge", "money": { "amount": 200, "currency": "USD" } }
+        { "name": "Research — part 1", "money": { "amount": 30000, "currency": "PKR" } },
+        { "name": "Research — part 2", "money": { "amount": 50000, "currency": "PKR" } }
       ] },
-    { "name": "Step 2 CK Qbank", "phase": "step2", "category": "prep", "money": { "amount": 450, "currency": "USD" }, "kind": "estimate", "priority": "must" },
-    { "name": "OET Medicine", "phase": "ecfmg", "category": "exam", "money": { "amount": 600, "currency": "USD" }, "kind": "estimate", "priority": "must" },
-    { "name": "Pathways application", "phase": "ecfmg", "category": "apps", "money": { "amount": 1000, "currency": "USD" }, "kind": "estimate", "priority": "must" },
-    { "name": "USCE / electives", "phase": "usce", "category": "travel", "money": { "amount": 3000, "currency": "USD" }, "kind": "estimate", "range": { "low": 2000, "high": 6000 }, "priority": "should",
-      "subCosts": [
-        { "name": "Rotation fees", "money": { "amount": 1500, "currency": "USD" } },
-        { "name": "Visa (B1/B2)", "money": { "amount": 185, "currency": "USD" } },
-        { "name": "Flights", "money": { "amount": 350000, "currency": "PKR" } },
-        { "name": "Accommodation", "money": { "amount": 1000, "currency": "USD" } }
-      ] },
-    { "name": "ERAS application", "phase": "match", "category": "apps", "money": { "amount": 1500, "currency": "USD" }, "kind": "estimate", "range": { "low": 800, "high": 3000 }, "priority": "must" },
-    { "name": "NRMP Match registration", "phase": "match", "category": "apps", "money": { "amount": 100, "currency": "USD" }, "kind": "estimate", "priority": "must" },
-    { "name": "Study-period living stipend", "phase": "general", "category": "living", "money": { "amount": 40000, "currency": "PKR" }, "kind": "estimate", "priority": "should", "temporary": { "monthsFromNow": 6 }, "recurrence": { "frequency": "monthly", "interval": 1, "occurrences": 6 } }
+    { "name": "Interview room setup", "phase": "match", "category": "setup", "money": { "amount": 50000, "currency": "PKR" }, "priority": "should" }
   ],
   "tasks": [
-    { "title": "Create ECFMG / USMLE ID", "phase": "ecfmg", "priority": "must" },
-    { "title": "Submit ECFMG certification application + notarized form", "phase": "ecfmg", "priority": "must" },
-    { "title": "Apply for Step 1 & pick eligibility period", "phase": "step1", "priority": "must", "linkedCost": "Step 1 exam" },
-    { "title": "Book Step 1 test date (Prometric)", "phase": "step1", "priority": "must" },
-    { "title": "Finish Step 1 Qbank", "phase": "step1", "priority": "must", "progress": { "current": 0, "total": 3600, "unit": "questions" } },
-    { "title": "Take NBME self-assessments", "phase": "step1", "priority": "should", "progress": { "current": 0, "total": 6, "unit": "forms" } },
-    { "title": "Apply for Step 2 CK", "phase": "step2", "priority": "must", "linkedCost": "Step 2 CK exam" },
-    { "title": "Finish Step 2 CK Qbank", "phase": "step2", "priority": "must", "progress": { "current": 0, "total": 3800, "unit": "questions" } },
-    { "title": "Take OET / complete Pathway", "phase": "ecfmg", "priority": "must" },
-    { "title": "Secure USCE / electives + LoRs", "phase": "usce", "priority": "should", "checklist": ["Shortlist programs", "Apply", "Visa appointment", "Collect LoRs"] },
-    { "title": "Prepare ERAS (CV, personal statement, program list)", "phase": "match", "priority": "must", "checklist": ["CV", "Personal statement", "Program list", "MSPE / transcript"] },
+    { "title": "Submit ECFMG Pathways application", "phase": "ecfmg", "priority": "must", "linkedCost": "ECFMG Pathways" },
+    { "title": "Complete ECFMG Certification", "phase": "ecfmg", "priority": "must", "linkedCost": "ECFMG Certification" },
+    { "title": "Register & schedule Step 3", "phase": "step3", "priority": "must", "linkedCost": "Step 3" },
+    { "title": "Step 3 prep — Qbank", "phase": "step3", "priority": "must", "progress": { "current": 0, "total": 1700, "unit": "questions" } },
+    { "title": "Research work / publications", "phase": "research", "priority": "should", "checklist": ["Pick project", "Submit abstract", "Manuscript", "Publication"] },
+    { "title": "Arrange observership", "phase": "usa", "priority": "should", "linkedCost": "Observership", "checklist": ["Shortlist sites", "Apply", "Confirm dates", "Request LoR"] },
+    { "title": "Book flights", "phase": "usa", "priority": "must", "linkedCost": "Flight tickets" },
+    { "title": "Arrange USA accommodation (5 months)", "phase": "usa", "priority": "must", "linkedCost": "5-month stay in the USA" },
+    { "title": "Prepare ERAS (CV, personal statement, LoRs, program list of 100)", "phase": "match", "priority": "must", "linkedCost": "Match application (100 programs)", "checklist": ["CV", "Personal statement", "LoRs", "Program list", "MSPE / transcript"] },
+    { "title": "Set up interview room", "phase": "match", "priority": "should", "linkedCost": "Interview room setup", "checklist": ["Lighting", "Camera/mic", "Background", "Test call"] },
+    { "title": "Interview prep & mock interviews", "phase": "match", "priority": "must" },
     { "title": "Register for NRMP Match & submit rank list", "phase": "match", "priority": "must" }
   ]
 }

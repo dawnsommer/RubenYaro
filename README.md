@@ -1,4 +1,4 @@
-# StepFund
+# RubenYaro
 A minimal, local-first web app to plan and track the full cost of the USMLE journey (USD ⇄ PKR), money across multiple accounts, and a USMLE to-do list. Hosted on GitHub Pages.
 
 - Design spec: [docs/DESIGN.md](docs/DESIGN.md)

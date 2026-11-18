@@ -1,4 +1,4 @@
-# Agent instructions — StepFund
+# Agent instructions — RubenYaro
 1. **Always read `HANDOFF.md` first** and follow its PROTOCOL (start → during → end).
 2. Spec lives in `docs/DESIGN.md`; read only the sections the current checkpoint lists.
 3. Visual reference: `docs/mockup/index.html` (static mock — do not ship it).

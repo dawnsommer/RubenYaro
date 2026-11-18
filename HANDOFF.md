@@ -1,10 +1,10 @@
-# HANDOFF — StepFund (single source of truth between chats)
+# HANDOFF — RubenYaro (single source of truth between chats)
 > **Every new chat: read this file first, then only the DESIGN.md sections listed for the current checkpoint.** Keep this file ≤ 150 lines. Spec = `docs/DESIGN.md` (§ refs below). Visual ref = `docs/mockup/index.html`.
 
 ## 1. Snapshot
 | Key | Value |
 |---|---|
-| Project | StepFund — USMLE cost + task planner, static SPA on GitHub Pages |
+| Project | RubenYaro — USMLE cost + task planner, static SPA on GitHub Pages |
 | Stack | Vite · React 18 · TS strict · Tailwind v4 · Zustand(persist) · HashRouter · recharts · dnd-kit · cmdk · date-fns · vitest |
 | Current checkpoint | **CP0 — not started** |
 | Last updated | 2026-11-18 · by: design session |
@@ -18,10 +18,10 @@ Do them **in order**. One checkpoint ≈ one chat. Don't start the next until "D
 |---|---|---|---|---|
 | CP0 | [ ] | Scaffold + deploy pipeline | §2, §10 | `npm run dev/build/test` work; `deploy.yml` deploys to Pages; HashRouter with 6 empty routes |
 | CP1 | [ ] | Design tokens + UI kit + AppShell | §7, §3, mockup | tokens.css light/dark; all §7.4 components; Sidebar/BottomNav/RateBar shell (static values) responsive 360–1440 |
-| CP2 | [ ] | Types + store + persistence + seed | §4, §9, seed.json | `types/index.ts` = §4; store CRUD for all entities; persist key `stepfund:v1` + migrate(); export/import JSON; seed loader (all seeded costs `verify:true`) |
+| CP2 | [ ] | Types + store + persistence + seed | §4, §9, seed.json | `types/index.ts` = §4 (incl. `maybe`, `variants`); store CRUD for all entities; persist key `rubenyaro:v1` + migrate(); export/import JSON (+ seed-format merge import); seed loader; `.gitignore` keeps `private/` |
 | CP3 | [ ] | Currency engine + rates + Amount/MoneyInput | §5, §6.0, §7.4 | `currency.ts` all formulas + tests green; `rates.ts` primary→fallback→cache 12h→manual; RateBar live & editable; `Amount` + `MoneyInput` (parses `1.2k`, `3 lakh`, `450*3`) |
 | CP4 | [ ] | Accounts + ledger | §6.3, §5.4 | CRUD, deposit/withdraw/transfer (cross-currency), balances, reserved, ledger view, sparkline |
-| CP5 | [ ] | Costs (core) | §6.2, §4 selectors | CRUD, sub-costs (expand, Σ, include toggles), temporary, recurring, included toggle, archive, drag reorder, views: phase/category/table |
+| CP5 | [ ] | Costs (core) | §6.2, §4 selectors | CRUD, sub-costs (expand, Σ, include + Maybe toggles), variants switcher, temporary, recurring, included toggle, archive, drag reorder, views: phase/category/table |
 | CP6 | [ ] | Payments + statuses + Timeline view | §6.2 tabs 3–4, §4 | Record payment from cost/account; status auto (Paid/Partial/Due soon/Overdue); Breakdown tab; Timeline view; CSV export |
 | CP7 | [ ] | Dashboard | §6.1 | All 9 blocks with real selectors; onboarding empty state |
 | CP8 | [ ] | Tasks + key dates | §6.4, §6.6 Journey | List/Board/Upcoming, quick-add syntax, checklist, progress trackers, linked cost prompt, undo, countdowns, starter checklist |
@@ -42,9 +42,15 @@ Do them **in order**. One checkpoint ≈ one chat. Don't start the next until "D
 - D5 Three modes: market (live/manual), effective (flat 300), detailed (market + tax % or fixed PKR).
 - D6 Rate source: open.er-api.com → fallback fawazahmed0 currency-api (jsdelivr) → cached → manual.
 - D7 Cost with sub-costs: parent total = Σ included sub-costs (parent `money` ignored).
-- D8 Seed values are placeholders (`verify:true`); user enters real numbers in-app.
+- D8 `docs/seed.json` holds the user's real journey values (public fees/estimates); only `verify:true` items are placeholders.
+- D9 Project name = **RubenYaro**. Persist key `rubenyaro:v1`.
+- D10 Personal data (balance ₨4.8M, loans, job payment, iPhone) lives in gitignored `private/my-data.json`; merged via Import. Never commit it.
+- D11 `maybe` flag on Cost & SubCost; dashboard shows gap confirmed vs with-maybes.
+- D12 `variants` + `activeVariantId` for alternative pricing (Flights: round trip vs separate one-ways).
+- D13 Sanity check at card rate 300 (for tests): confirmed plan ₨4,346,500 → surplus ₨453,500 vs ₨4.8M; maybes +₨456,000 → short ₨2,500.
 
 ## 5. Session log (keep last 3; compress older into §6 as one line)
+- **S1 · 2026-11-18 · Design** — Renamed to RubenYaro; real starter values in seed.json + private/my-data.json; added `maybe` + `variants` to spec.
 - **S0 · 2026-11-18 · Design** — Wrote DESIGN.md, seed.json, mockup, HANDOFF/AGENTS/GEMINI. No code yet.
 
 ## 6. History (one line per old session)
@@ -54,7 +60,7 @@ Do them **in order**. One checkpoint ≈ one chat. Don't start the next until "D
 - —
 
 ## 8. File map (update when adding top-level modules)
-`docs/DESIGN.md` spec · `docs/seed.json` starter data · `docs/mockup/index.html` visual ref · `src/types` · `src/lib` (currency, rates, format, parseAmount) · `src/store` · `src/components/{ui,layout}` · `src/features/*`
+`docs/DESIGN.md` spec · `docs/seed.json` starter data · `private/my-data.json` personal data (gitignored) · `docs/mockup/index.html` visual ref · `src/types` · `src/lib` (currency, rates, format, parseAmount) · `src/store` · `src/components/{ui,layout}` · `src/features/*`
 
 ---
 ## PROTOCOL (mandatory for every chat)
@@ -75,4 +81,4 @@ Do them **in order**. One checkpoint ≈ one chat. Don't start the next until "D
 4. Commit: `handoff: CPn <status>`.
 
 **Kickoff prompt for a new chat (user pastes this):**
-> Continue the StepFund project. Follow the PROTOCOL in `HANDOFF.md` exactly: read HANDOFF.md, then only the DESIGN.md sections for the current checkpoint, verify git state, complete the checkpoint, and update HANDOFF.md before ending.
+> Continue the RubenYaro project. Follow the PROTOCOL in `HANDOFF.md` exactly: read HANDOFF.md, then only the DESIGN.md sections for the current checkpoint, verify git state, complete the checkpoint, and update HANDOFF.md before ending.
