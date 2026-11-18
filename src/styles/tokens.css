@@ -1,1 +1,27 @@
-/* Design tokens — populated in CP1 */
+:root {
+  --bg: #F7F7F5;
+  --surface: #FFFFFF;
+  --surface-2: #F1F1EF;
+  --border: #E7E7E4;
+  --text: #111113;
+  --text-muted: #6B6B73;
+  --accent: #4F46E5;
+  --accent-soft: #EEF0FF;
+  --positive: #059669;
+  --negative: #E11D48;
+  --warning: #D97706;
+}
+
+.dark {
+  --bg: #0A0A0B;
+  --surface: #131316;
+  --surface-2: #1B1B1F;
+  --border: #26262B;
+  --text: #F4F4F5;
+  --text-muted: #9A9AA3;
+  --accent: #818CF8;
+  --accent-soft: #1E1B4B;
+  --positive: #34D399;
+  --negative: #FB7185;
+  --warning: #FBBF24;
+}
