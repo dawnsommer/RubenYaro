@@ -6,8 +6,8 @@
 |---|---|
 | Project | RubenYaro — USMLE cost + task planner, static SPA on GitHub Pages |
 | Stack | Vite · React 18 · TS strict · Tailwind v4 · Zustand(persist) · HashRouter · recharts · dnd-kit · cmdk · date-fns · vitest |
-| Current checkpoint | **CP4 — in progress** (CP0–CP3 done) |
-| Last updated | 2026-11-18 · by: CP3 session |
+| Current checkpoint | **CP5 — in progress** (CP0–CP4 done) |
+| Last updated | 2026-11-18 · by: CP4 session |
 | Build status | green (`npm run build && npm test`) |
 | Live URL | n/a (set after CP0 deploy) |
 
@@ -20,8 +20,8 @@ Do them **in order**. One checkpoint ≈ one chat. Don't start the next until "D
 | CP1 | [x] | Design tokens + UI kit + AppShell | §7, §3, mockup | tokens.css light/dark; all §7.4 components; Sidebar/BottomNav/RateBar shell (static values) responsive 360–1440 |
 | CP2 | [x] | Types + store + persistence + seed | §4, §9, seed.json | `types/index.ts` = §4 (incl. `maybe`, `variants`); store CRUD for all entities; persist key `rubenyaro:v1` + migrate(); export/import JSON (+ seed-format merge import); seed loader; `.gitignore` keeps `private/` |
 | CP3 | [x] | Currency engine + rates + Amount/MoneyInput | §5, §6.0, §7.4 | `currency.ts` all formulas + tests green; `rates.ts` primary→fallback→cache 12h→manual; RateBar live & editable; `Amount` + `MoneyInput` (parses `1.2k`, `3 lakh`, `450*3`) |
-| CP4 | [~] | Accounts + ledger | §6.3, §5.4 | CRUD, deposit/withdraw/transfer (cross-currency), balances, reserved, ledger view, sparkline |
-| CP5 | [ ] | Costs (core) | §6.2, §4 selectors | CRUD, sub-costs (expand, Σ, include + Maybe toggles), variants switcher, temporary, recurring, included toggle, archive, drag reorder, views: phase/category/table |
+| CP4 | [x] | Accounts + ledger | §6.3, §5.4 | CRUD, deposit/withdraw/transfer (cross-currency), balances, reserved, ledger view, sparkline |
+| CP5 | [~] | Costs (core) | §6.2, §4 selectors | CRUD, sub-costs (expand, Σ, include + Maybe toggles), variants switcher, temporary, recurring, included toggle, archive, drag reorder, views: phase/category/table |
 | CP6 | [ ] | Payments + statuses + Timeline view | §6.2 tabs 3–4, §4 | Record payment from cost/account; status auto (Paid/Partial/Due soon/Overdue); Breakdown tab; Timeline view; CSV export |
 | CP7 | [ ] | Dashboard | §6.1 | All 9 blocks with real selectors; onboarding empty state |
 | CP8 | [ ] | Tasks + key dates | §6.4, §6.6 Journey | List/Board/Upcoming, quick-add syntax, checklist, progress trackers, linked cost prompt, undo, countdowns, starter checklist |
@@ -30,8 +30,8 @@ Do them **in order**. One checkpoint ≈ one chat. Don't start the next until "D
 | CP11 | [ ] | QA + polish + release | §11 | Tests green, Lighthouse ≥90/95, a11y pass, README usage, tagged v1.0.0 |
 
 ## 3. Active work  (only the current checkpoint — overwrite each session)
-- **Goal:** CP4 — Accounts + ledger
-- **Next steps:** 1) Write `src/store/selectors.ts` (accountBalance, totalFunds, spendingPower, etc.) + `src/lib/__tests__/selectors.test.ts` 2) Implement `src/features/accounts/AccountsPage.tsx` (summary bar, account cards with sparkline, deposit/withdraw/transfer sheets, ledger detail view).
+- **Goal:** CP5 — Costs (core) + CP6 (Payments + statuses + Timeline view + CSV export)
+- **Next steps:** 1) Implement `src/lib/csv.ts` and `src/lib/dates.ts` 2) Implement `src/features/costs/CostsPage.tsx` and `CostDetailSheet.tsx` covering CRUD, sub-costs, variants switcher, temporary/recurring, maybe/included toggles, drag reorder, views (By phase, By category, Timeline, Table), payments & Breakdown tabs, CSV export.
 - **Blockers / questions for user:** none.
 
 ## 4. Decisions (append one line each; never delete)
@@ -50,11 +50,12 @@ Do them **in order**. One checkpoint ≈ one chat. Don't start the next until "D
 - D13 Sanity check at card rate 300 (for tests): confirmed plan ₨4,346,500 → surplus ₨453,500 vs ₨4.8M; maybes +₨456,000 → short ₨2,500.
 
 ## 5. Session log (keep last 3; compress older into §6 as one line)
+- **S6 · 2026-11-18 · CP4** — Built `selectors.ts` (verified D13 sanity test), `AccountsPage.tsx` with CRUD, cross-currency transfers, sparklines, and ledger view.
 - **S5 · 2026-11-18 · CP3** — Implemented `currency.ts`, `rates.ts` (primary→fallback→12h cache→manual), `parseAmount.ts`, `format.ts`, wired `Amount`/`MoneyInput`/`RateBar`, 18 unit tests passing.
 - **S4 · 2026-11-18 · CP2** — Added §4 TypeScript data model, Zustand persist store (`rubenyaro:v1`) with migrations, seed loader, and JSON export/import + seed merge.
-- **S3 · 2026-11-18 · CP1** — Built light/dark tokens.css, all §7.4 UI kit components, and responsive AppShell/Sidebar/BottomNav/RateBar.
 
 ## 6. History (one line per old session)
+- **S3 · 2026-11-18 · CP1** — Built light/dark tokens.css, all §7.4 UI kit components, and responsive AppShell/Sidebar/BottomNav/RateBar.
 - **S2 · 2026-11-18 · CP0** — Scaffolded Vite + React 18 + TS strict + Tailwind v4, deploy.yml, HashRouter 6 routes, vitest.
 - **S1 · 2026-11-18 · Design** — Renamed to RubenYaro; real starter values in seed.json + private/my-data.json; added `maybe` + `variants`.
 - **S0 · 2026-11-18 · Design** — Wrote DESIGN.md, seed.json, mockup, HANDOFF/AGENTS/GEMINI.
