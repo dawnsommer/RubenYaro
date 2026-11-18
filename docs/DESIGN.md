@@ -412,7 +412,7 @@ Category palette (10): `#6366F1 #0EA5E9 #14B8A6 #22C55E #EAB308 #F97316 #EF4444 
 ### 7.5 Iconography (lucide)
 Dashboard `LayoutGrid` · Costs `Receipt` · Accounts `Wallet` · Tasks `CheckCircle2` · Planner `LineChart` · Settings `Settings2` · Temporary `Clock` · Recurring `Repeat` · Estimate `Sparkles`/`≈` · Verify `AlertCircle`.
 
-Visual reference: open `docs/mockup/index.html` in a browser (static, not production code).
+> **v2 note:** visual/UX details in §6–§7 are superseded by HANDOFF decisions D16–D19 (v2 redesign: TopBar shell, inline cost editing, no side drawers, new tokens). The static mockup was removed.
 
 ---
 
@@ -443,7 +443,7 @@ Visual reference: open `docs/mockup/index.html` in a browser (static, not produc
 ├─ vite.config.ts            # base from VITE_BASE
 ├─ .github/workflows/deploy.yml
 ├─ HANDOFF.md  AGENTS.md  GEMINI.md  README.md
-├─ docs/  DESIGN.md  seed.json  mockup/index.html
+├─ docs/  DESIGN.md  seed.json
 ├─ private/my-data.json      # gitignored personal data (import via Settings → Data)
 └─ src/
    ├─ main.tsx  App.tsx  routes.tsx

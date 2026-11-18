@@ -41,7 +41,7 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
   return (
     <div className="fixed inset-0 z-50 grid place-items-start justify-center pt-20 p-4">
       <div
-        className="fixed inset-0 bg-black/40 backdrop-blur-[1px]"
+        className="fixed inset-0 bg-black/40 backdrop-blur-sm animate-fade-in"
         onClick={onClose}
         aria-hidden="true"
       />
@@ -49,7 +49,7 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
         role="dialog"
         aria-modal="true"
         aria-label="Command palette"
-        className="relative z-10 w-full max-w-lg rounded-[16px] bg-[var(--surface)] border border-[var(--border)] shadow-[0_8px_30px_rgb(0_0_0_/_0.08)] overflow-hidden"
+        className="relative z-10 w-full max-w-lg rounded-[22px] bg-[var(--surface)] border border-[var(--border)] shadow-[var(--shadow-lg)] overflow-hidden animate-pop-in"
       >
         <Command className="w-full" label="Command Palette">
           <div className="border-b border-[var(--border)] px-4 py-3">
@@ -216,7 +216,7 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
                   <Command.Item
                     key={c.id}
                     value={`cost ${c.name}`}
-                    onSelect={() => runAndClose(() => navigate('/costs'))}
+                    onSelect={() => runAndClose(() => navigate(`/costs?open=${c.id}`))}
                     className="flex items-center justify-between px-3 py-2 rounded-[10px] text-sm text-[var(--text)] aria-selected:bg-[var(--accent-soft)] aria-selected:text-[var(--accent)] cursor-pointer"
                   >
                     <span>{c.name}</span>

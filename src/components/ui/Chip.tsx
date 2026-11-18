@@ -6,7 +6,8 @@ export type ChipVariant =
   | 'positive'
   | 'negative'
   | 'warning'
-  | 'estimate';
+  | 'estimate'
+  | 'maybe';
 
 export interface ChipProps extends HTMLAttributes<HTMLSpanElement> {
   variant?: ChipVariant;
@@ -20,17 +21,18 @@ export function Chip({
   ...props
 }: ChipProps) {
   const styles: Record<ChipVariant, string> = {
-    default: 'border border-[var(--border)] text-[var(--text-muted)] bg-transparent',
-    accent: 'border border-transparent bg-[var(--accent-soft)] text-[var(--accent)]',
-    positive: 'border border-[var(--positive)] text-[var(--positive)] bg-transparent',
-    negative: 'border border-[var(--negative)] text-[var(--negative)] bg-transparent',
-    warning: 'border border-[var(--warning)] text-[var(--warning)] bg-transparent',
-    estimate: 'border border-dashed border-[var(--warning)] text-[var(--warning)] bg-transparent',
+    default: 'bg-[var(--surface-2)] text-[var(--text-muted)]',
+    accent: 'bg-[var(--accent-soft)] text-[var(--accent)]',
+    positive: 'bg-[var(--positive-soft)] text-[var(--positive)]',
+    negative: 'bg-[var(--negative-soft)] text-[var(--negative)]',
+    warning: 'bg-[var(--warning-soft)] text-[var(--warning)]',
+    estimate: 'bg-[var(--warning-soft)] text-[var(--warning)]',
+    maybe: 'bg-[var(--maybe-soft)] text-[var(--maybe)]',
   };
 
   return (
     <span
-      className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] leading-[14px] font-medium ${styles[variant]} ${className}`}
+      className={`inline-flex items-center gap-1 rounded-full px-2 py-[3px] text-[11px] leading-[14px] font-medium whitespace-nowrap ${styles[variant]} ${className}`}
       {...props}
     >
       {children}

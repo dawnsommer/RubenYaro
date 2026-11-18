@@ -29,7 +29,7 @@ export function Toast({ toast, onDismiss }: ToastProps) {
     <div
       role="status"
       aria-live="polite"
-      className="fixed bottom-20 lg:bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 rounded-[10px] bg-[var(--text)] text-[var(--bg)] px-4 py-2.5 text-sm shadow-[0_8px_30px_rgb(0_0_0_/_0.08)]"
+      className="fixed bottom-24 lg:bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 rounded-full bg-[var(--text)] text-[var(--bg)] pl-4 pr-2 py-2 text-sm shadow-[var(--shadow-lg)] animate-fade-up"
     >
       <span>{toast.message}</span>
       {toast.actionLabel && toast.onAction && (

@@ -25,7 +25,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
     ref
   ) => {
     const base =
-      'inline-flex items-center justify-center gap-2 rounded-[10px] font-medium transition-colors duration-150 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed select-none';
+      'inline-flex items-center justify-center gap-1.5 rounded-full font-medium transition-all duration-150 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed select-none active:scale-[0.98] whitespace-nowrap';
 
     const sizeStyles =
       size === 'sm'
@@ -37,11 +37,12 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
           : 'h-9 px-4 text-sm';
 
     const variantStyles: Record<ButtonVariant, string> = {
-      primary: 'bg-[var(--accent)] text-white hover:opacity-90',
+      primary:
+        'bg-[var(--accent)] text-[var(--accent-fg)] hover:bg-[var(--accent-hover)] shadow-[var(--shadow-sm)]',
       secondary:
-        'bg-[var(--surface-2)] text-[var(--text)] border border-[var(--border)] hover:bg-[var(--border)]',
+        'bg-[var(--surface)] text-[var(--text)] border border-[var(--border)] hover:bg-[var(--surface-2)] shadow-[var(--shadow-sm)]',
       ghost: 'bg-transparent text-[var(--text-muted)] hover:bg-[var(--surface-2)] hover:text-[var(--text)]',
-      danger: 'bg-[var(--negative)] text-white hover:opacity-90',
+      danger: 'bg-[var(--negative-soft)] text-[var(--negative)] hover:bg-[var(--negative)] hover:text-white',
     };
 
     return (

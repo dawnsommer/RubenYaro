@@ -27,16 +27,16 @@ export function Switch({
         disabled={disabled}
         onClick={() => !disabled && onChange(!checked)}
         className={`relative inline-flex h-5 w-9 shrink-0 rounded-full border border-transparent transition-colors duration-150 ${
-          checked ? 'bg-[var(--accent)]' : 'bg-[var(--border)]'
+          checked ? 'bg-[var(--accent)]' : 'bg-[var(--surface-3)]'
         }`}
       >
         <span
-          className={`pointer-events-none inline-block h-4 w-4 rounded-full bg-white transition-transform duration-150 ${
+          className={`pointer-events-none inline-block h-4 w-4 rounded-full bg-white shadow-sm transition-transform duration-150 ${
             checked ? 'translate-x-4' : 'translate-x-0'
           }`}
         />
       </button>
-      {label && <span className="text-sm text-[var(--text)]">{label}</span>}
+      {label && <span className="text-sm text-[var(--text)] whitespace-nowrap">{label}</span>}
     </label>
   );
 }

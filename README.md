@@ -3,7 +3,8 @@
 A minimal, local-first web app to plan and track the full cost of the USMLE journey (USD ⇄ PKR), money across multiple accounts, and a USMLE to-do list. Hosted on GitHub Pages.
 
 - Design spec: [docs/DESIGN.md](docs/DESIGN.md)
-- Build progress & handoff between AI chats: [HANDOFF.md](HANDOFF.md)
+- Build progress & handoff between AI agents: [HANDOFF.md](HANDOFF.md)
+- Rules for AI agents (Claude Code & Antigravity share them): [AGENTS.md](AGENTS.md)
 
 ## Quick Start
 
@@ -18,7 +19,7 @@ npm run build    # Type-check (strict) + build static bundle into dist/
 
 - **Dual-Currency Engine (USD ⇄ PKR):** Enter any cost or balance in USD or PKR. Switch between Market rate (live auto-sync with 12h cache + fallback), Card/Effective rate (default ₨300/USD), or Detailed mode (Market + % or fixed PKR tax).
 - **Dashboard (`#/`):** Instant funding status (surplus or shortfall), confirmed vs. *with-maybes* toggle, spending power in USD, upcoming payments, cost by phase & category donut, accounts strip, pending tasks, and countdowns.
-- **Costs (`#/costs`):** Grouped by phase or category, vertical Timeline view, and inline-editable Table view. Supports nested sub-costs (`Σ` of included items), pricing variants (`Round trip` vs `Separate one-ways`), `Maybe` uncertain costs, temporary windows, recurring subscriptions, payment recording, and CSV export.
+- **Costs (`#/costs`):** One-line quick add, grouped by phase, category or month; click any cost to edit it inline (no side panel). Supports nested sub-costs (`Σ` of included items), pricing variants (`Round trip` vs `Separate one-ways`), `Maybe` uncertain costs, temporary windows, recurring subscriptions, payment recording, and CSV export.
 - **Accounts (`#/accounts`):** Multi-currency accounts (PKR & USD), earmarked reserved amounts, balance sparklines, deposits, withdrawals, cross-currency transfers, and running-balance ledger.
 - **Tasks (`#/tasks`):** List by phase, Kanban Board, and Upcoming views. Supports quick-add syntax (`Book Step 3 #step3 !must @2026-12-10`), checklists, numeric progress trackers (`+10` / `+40` buttons), and linked-cost payment prompts.
 - **Planner (`#/planner`):** Affordability check, savings goal + cash-flow projection chart, exchange-rate what-if sliders, quick converter, and Lean / Expected / Comfortable scenario toggles.

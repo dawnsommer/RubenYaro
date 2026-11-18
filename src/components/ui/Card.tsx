@@ -20,8 +20,8 @@ export function Card({
 }: CardProps) {
   return (
     <section
-      className={`rounded-[16px] border border-[var(--border)] ${
-        muted ? 'bg-[var(--surface-2)]' : 'bg-[var(--surface)]'
+      className={`rounded-[18px] border border-[var(--border)] ${
+        muted ? 'bg-[var(--surface-2)]' : 'bg-[var(--surface)] shadow-[var(--shadow-sm)]'
       } ${noPadding ? '' : 'p-4 md:p-5'} ${className}`}
       {...props}
     >
@@ -33,7 +33,7 @@ export function Card({
         >
           <div>
             {typeof title === 'string' ? (
-              <h2 className="text-[18px] leading-[26px] font-semibold text-[var(--text)]">
+              <h2 className="text-[15px] leading-[22px] font-semibold tracking-[-0.01em] text-[var(--text)]">
                 {title}
               </h2>
             ) : (

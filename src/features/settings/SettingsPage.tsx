@@ -160,9 +160,8 @@ export function SettingsPage() {
     <div className="space-y-6">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <p className="label-micro">Preferences &amp; Backup</p>
           <div className="flex items-center gap-2.5 mt-1">
-            <h1 className="text-[24px] leading-[32px] font-semibold">Settings</h1>
+            <h1 className="text-[26px] leading-[32px] font-semibold tracking-[-0.03em]">Settings</h1>
             <Chip variant={updateAvailable ? 'warning' : 'accent'}>
               v{CURRENT_BUILD.version} · {CURRENT_BUILD.gitSha}
             </Chip>
@@ -276,7 +275,7 @@ export function SettingsPage() {
                         const v = parseFloat(e.target.value);
                         if (v > 0) state.updateRates({ effective: v });
                       }}
-                      className="w-full rounded-[10px] bg-[var(--surface-2)] border border-[var(--border)] px-3 py-2 text-sm num outline-none"
+                      className="field num"
                     />
                   </div>
                 </div>
@@ -355,7 +354,7 @@ export function SettingsPage() {
                           },
                         })
                       }
-                      className="w-full rounded-[10px] bg-[var(--surface-2)] border border-[var(--border)] px-3 py-2 text-sm num outline-none"
+                      className="field num"
                     />
                   </div>
                 </div>

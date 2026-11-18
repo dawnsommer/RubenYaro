@@ -301,8 +301,7 @@ export function PlannerPage() {
   return (
     <div className="space-y-6">
       <div>
-        <p className="label-micro">Simulations &amp; Calculators</p>
-        <h1 className="text-[24px] leading-[32px] font-semibold mt-1">Planner</h1>
+        <h1 className="text-[26px] leading-[32px] font-semibold tracking-[-0.03em]">Planner</h1>
       </div>
 
       <div className="grid grid-cols-12 gap-4">

@@ -1,14 +1,14 @@
 # HANDOFF — RubenYaro (single source of truth between chats)
-> **Every new chat: read this file first, then only the DESIGN.md sections listed for the current checkpoint.** Keep this file ≤ 150 lines. Spec = `docs/DESIGN.md` (§ refs below). Visual ref = `docs/mockup/index.html`.
+> **Every new chat (any agent — Claude Code or Antigravity/Gemini): read `AGENTS.md`, then this file, then only the DESIGN.md sections listed for the current checkpoint.** Keep this file ≤ 150 lines. Spec = `docs/DESIGN.md` (§ refs below; UI/UX in §6–§7 superseded by D16+). The static mockup was removed (no visual ref file).
 
 ## 1. Snapshot
 | Key | Value |
 |---|---|
 | Project | RubenYaro — USMLE cost + task planner, static SPA on GitHub Pages |
 | Stack | Vite · React 18 · TS strict · Tailwind v4 · Zustand(persist) · HashRouter · recharts · dnd-kit · cmdk · date-fns · vitest |
-| Current checkpoint | **All checkpoints complete (CP0–CP11 + Redesign + Versioned Deploy `v1.1.0`)** |
-| Last updated | 2026-11-18 · by: v1.1.0 redesign & deploy session |
-| Build status | green (`npm run build && npm test && npm run lint` — 4 test files, 26 tests pass) |
+| Current checkpoint | **R2 v2.0 redesign done** (CP0–CP11 + v1.1 deploy + R2) |
+| Last updated | 2026-11-18 · by: Claude Code (S15 · R2 redesign) |
+| Build status | green (`npm run build && npm test` — 4 test files, 26 tests pass) · v2.0.0 not yet pushed/deployed |
 | Live URL | https://dawnsommer.github.io/RubenYaro/ |
 
 ## 2. Checkpoints  (`[ ]` todo · `[~]` in progress · `[x]` done)
@@ -28,10 +28,14 @@ Do them **in order**. One checkpoint ≈ one chat. Don't start the next until "D
 | CP9 | [x] | Planner | §6.5 | Affordability, savings goal + cash-flow chart, rate what-if, converter, scenarios |
 | CP10 | [x] | Settings + ⌘K + privacy + PWA | §6.6, §6.7, §8, §9 | All settings sections; palette; shortcuts; privacy blur; snapshots; backup nudge; offline PWA |
 | CP11 | [x] | QA + polish + release | §11 | Tests green, Lighthouse ≥90/95, a11y pass, README usage, tagged v1.0.0 |
+| R2 | [x] | v2 redesign (theme, shell, inline cost editor) | D16–D19 | Build/tests green; no side drawers; Costs edit inline; multi-agent files in place |
 
 ## 3. Active work  (only the current checkpoint — overwrite each session)
-- **Goal:** Complete — `v1.1.0` deployed live to GitHub Pages (`https://dawnsommer.github.io/RubenYaro/`).
-- **Next steps:** Any future UI/feature requests: bump `version` in `package.json`, run `npm run build && npm test && npm run lint`, push to `main`, and click **Update & Reload App** in `Settings` on the live site.
+- **Goal:** R2 redesign shipped locally as `v2.0.0` (not pushed yet — user decides when to deploy).
+- **Next steps (pick up here):**
+  1. Push `main` → GitHub Pages deploys; on the live site use Settings → **Update & Reload App**.
+  2. Optional polish still open: Money (`src/features/accounts/AccountsPage.tsx`) and Planner (`src/features/planner/PlannerPage.tsx`) only got the theme/header pass — they could adopt the inline-edit pattern from `src/features/costs/CostEditor.tsx` (e.g. edit account inline instead of the modal). Tasks edit still uses the `Sheet` modal (`TasksPage.tsx` "Edit task").
+  3. A few Settings inputs still use the old inline class string instead of `.field` (SettingsPage.tsx ~L247/423/502/564/752) — cosmetic.
 - **Blockers / questions for user:** none.
 
 ## 4. Decisions (append one line each; never delete)
@@ -50,13 +54,18 @@ Do them **in order**. One checkpoint ≈ one chat. Don't start the next until "D
 - D13 Sanity check at card rate 300 (for tests): confirmed plan ₨4,346,500 (+ Visa Interview ₨60,000 = ₨4,406,500) → surplus ₨393,500 vs ₨4.8M; maybes +₨456,000 → short ₨62,500.
 - D14 Added `pinned?: boolean` on `Task` + schema v2 migration; Dashboard top shows pinned upcoming tasks; Tasks page has manual drag/arrow sorting & pin buttons; UI shows actual market rate primary with smaller `×300` after-tax rate alongside; added `Visa Interview` (₨60k = ₨50k plane ticket + ₨10k hotel/food).
 - D15 Versioned deploy (`version.json` emitted at build time with version + git SHA + timestamp, network-first HTML in `sw.js`, and "Update & Reload App" button in Settings that unregisters stale SW/caches while preserving `rubenyaro:v1` localStorage).
+- D16 Multi-agent: `AGENTS.md` holds all rules; `CLAUDE.md` (Claude Code) and `GEMINI.md` (Antigravity) only import it. Sessions are signed with the agent name in §5. `.claude/launch.json` = dev-server preview config.
+- D17 v2 theme: Geist font, violet accent `#6750F2` (dark `#9B8CFF`), soft-tinted status chips, subtle shadows, 18px card radius, gradient hero. Tokens in `src/styles/tokens.css`; shared `.field` / `.card` classes in `globals.css`.
+- D18 v2 shell: no sidebar/RateBar. One sticky `TopBar` (nav pills, rate pill → rate modal, PKR/USD toggle, privacy, ⌘K, settings gear) + 5-tab mobile `BottomNav` (Home, Costs, Tasks, Money, Planner). Nav list lives in `components/layout/nav.ts`.
+- D19 No side drawers: `Sheet` is now a centred modal (bottom sheet on mobile). Costs are edited **inline** — clicking a row expands `CostEditor` in place (name/amount, options, phase/category/due/priority, toggles, items, payments, "More options"). `CostDetailSheet` deleted. Deep link `#/costs?open=<id>` opens a cost (used by Home, Tasks, ⌘K). Costs views reduced to group by Phase/Category/Month + filter All/Unpaid/Paid/Maybe; Table view removed.
 
-## 5. Session log (keep last 3; compress older into §6 as one line)
+## 5. Session log (keep last 3; compress older into §6 as one line; sign with agent name)
+- **S15 · 2026-11-18 · Claude Code — R2 redesign** — Multi-agent setup (AGENTS/CLAUDE/GEMINI), new theme + TopBar/BottomNav shell, inline `CostEditor` replaces cost drawer, simplified Home + Costs, decluttered Tasks rows, Sheet → centred modal, v2.0.0.
 - **S14 · 2026-11-18 · Versioned Deploy** — Added build-time `version.json` manifest, `src/lib/version.ts`, network-first HTML caching in `sw.js`, and one-click "Update & Reload App" button in Settings.
 - **S13 · 2026-11-18 · Redesign** — Simplified UI & mobile UX, pinned tasks at top of Dashboard, manual task sorting + pin buttons, dual Market + `×300` after-tax rate display, top live-rate refresh button, and added `Visa Interview` (₨60k).
-- **S12 · 2026-11-18 · CP11** — Code-split Vite production bundle, wrote `README.md` usage guide, verified all 27 unit tests & strict TS build, and tagged `v1.0.0`.
 
 ## 6. History (one line per old session)
+- **S12 · 2026-11-18 · CP11** — Code-split bundle, README usage guide, 27 tests + strict TS, tagged `v1.0.0`.
 - **S11 · 2026-11-18 · CP10** — Built `SettingsPage.tsx` (6 sections, JSON import/merge, snapshots, backup nudge, RESET), `CommandPalette.tsx` (`⌘K` + shortcuts), and offline PWA (`manifest.webmanifest` + `sw.js`).
 - **S10 · 2026-11-18 · CP9** — Built `PlannerPage.tsx` with affordability check, savings goal + cash-flow chart, rate what-if sliders, quick converter, and scenario toggles.
 - **S9 · 2026-11-18 · CP8** — Built `TasksPage.tsx` with List/Board/Upcoming views, quick-add syntax, checklist, progress trackers (+10/+40), linked cost payment toast, Undo toast, and key dates countdowns.
@@ -74,13 +83,13 @@ Do them **in order**. One checkpoint ≈ one chat. Don't start the next until "D
 - —
 
 ## 8. File map (update when adding top-level modules)
-`docs/DESIGN.md` spec · `docs/seed.json` starter data · `private/my-data.json` personal data (gitignored) · `public/{sw.js,manifest.webmanifest,icon.svg}` · `src/types` · `src/lib` (currency, rates, format, parseAmount, dates, csv, version) · `src/store` (useStore, selectors, migrations, seed) · `src/components/{ui,layout}` · `src/features/{dashboard,costs,accounts,tasks,planner,settings}`
+`AGENTS.md` rules (CLAUDE.md/GEMINI.md import it) · `docs/DESIGN.md` spec · `docs/seed.json` starter data · `private/my-data.json` personal data (gitignored) · `public/{sw.js,manifest.webmanifest,icon.svg}` · `src/types` · `src/lib` (currency, rates, format, parseAmount, dates, csv, version) · `src/store` (useStore, selectors, migrations, seed) · `src/components/{ui,layout}` (layout: TopBar, BottomNav, PageHeader, CommandPalette, nav.ts) · `src/features/{dashboard,costs,accounts,tasks,planner,settings}`
 
 ---
 ## PROTOCOL (mandatory for every chat)
 **Start of chat**
-1. Read `HANDOFF.md` fully. Read only the DESIGN.md § listed for the current CP.
-2. `git log --oneline -5` and `git status` to confirm state matches §1/§3. If mismatch, trust the code, fix HANDOFF.
+1. Read `AGENTS.md` and `HANDOFF.md` fully. Read only the DESIGN.md § listed for the current CP.
+2. `git pull --rebase` (if remote), `git log --oneline -5`, `git status` to confirm state matches §1/§3. If mismatch, trust the code, fix HANDOFF.
 3. Mark the CP `[~]`, restate goal in one line, then work.
 
 **During**
@@ -91,8 +100,8 @@ Do them **in order**. One checkpoint ≈ one chat. Don't start the next until "D
 **End of chat (always, even if unfinished)**
 1. `npm run build && npm test` — note result in §1 Build status.
 2. Update §1 (current CP, date), §2 status, overwrite §3 with exact next steps (file + function level), append to §4/§7 if needed.
-3. Add a §5 entry (≤ 2 lines). If §5 has > 3 entries, move the oldest to §6 as one line.
+3. Add a §5 entry (≤ 2 lines, signed with your agent name). If §5 has > 3 entries, move the oldest to §6 as one line.
 4. Commit: `handoff: CPn <status>`.
 
 **Kickoff prompt for a new chat (user pastes this):**
-> Continue the RubenYaro project. Follow the PROTOCOL in `HANDOFF.md` exactly: read HANDOFF.md, then only the DESIGN.md sections for the current checkpoint, verify git state, complete the checkpoint, and update HANDOFF.md before ending.
+> Continue the RubenYaro project. Read `AGENTS.md`, then follow the PROTOCOL in `HANDOFF.md` exactly: read HANDOFF.md, then only the DESIGN.md sections for the current checkpoint, verify git state, complete the checkpoint, and update HANDOFF.md before ending.

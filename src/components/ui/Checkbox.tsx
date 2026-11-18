@@ -34,8 +34,8 @@ export function Checkbox({
           round ? 'rounded-full' : 'rounded-[5px]'
         } ${
           checked
-            ? 'bg-[var(--accent)] border-2 border-[var(--accent)] text-white'
-            : 'border-2 border-[var(--border)] bg-transparent hover:border-[var(--accent)]'
+            ? 'bg-[var(--accent)] border-2 border-[var(--accent)] text-[var(--accent-fg)]'
+            : 'border-2 border-[var(--border-strong)] bg-transparent hover:border-[var(--accent)]'
         }`}
       >
         {checked && <Check className="w-3 h-3 stroke-[2.5]" />}

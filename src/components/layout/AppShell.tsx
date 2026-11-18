@@ -1,7 +1,6 @@
 import { ReactNode, useEffect, useState } from 'react';
-import { Sidebar } from './Sidebar';
 import { BottomNav } from './BottomNav';
-import { RateBar } from './RateBar';
+import { TopBar } from './TopBar';
 import { CommandPalette } from './CommandPalette';
 import { useStore } from '../../store/useStore';
 
@@ -10,7 +9,6 @@ export interface AppShellProps {
 }
 
 export function AppShell({ children }: AppShellProps) {
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [paletteOpen, setPaletteOpen] = useState(false);
 
   const privacyMode = useStore((s) => s.settings.privacyMode);
@@ -69,19 +67,12 @@ export function AppShell({ children }: AppShellProps) {
   }, []);
 
   return (
-    <div className="flex min-h-screen bg-[var(--bg)] text-[var(--text)]">
-      <Sidebar
-        collapsed={sidebarCollapsed}
-        onToggleCollapse={() => setSidebarCollapsed((c) => !c)}
-      />
+    <div className="min-h-screen bg-[var(--bg)] text-[var(--text)]">
+      <TopBar onOpenCommandPalette={() => setPaletteOpen(true)} />
 
-      <div className="flex-1 min-w-0 flex flex-col pb-16 lg:pb-0">
-        <RateBar onOpenCommandPalette={() => setPaletteOpen(true)} />
-
-        <main className="flex-1 w-full max-w-[1200px] mx-auto p-4 lg:p-8">
-          {children}
-        </main>
-      </div>
+      <main className="w-full max-w-[1120px] mx-auto px-4 lg:px-6 pt-5 lg:pt-8 pb-28 lg:pb-16">
+        {children}
+      </main>
 
       <BottomNav />
 

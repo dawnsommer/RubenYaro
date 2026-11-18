@@ -36,7 +36,7 @@ export function Dialog({
   return (
     <div className="fixed inset-0 z-50 grid place-items-center p-4">
       <div
-        className="fixed inset-0 bg-black/40 backdrop-blur-[1px]"
+        className="fixed inset-0 bg-black/40 backdrop-blur-sm animate-fade-in"
         onClick={onClose}
         aria-hidden="true"
       />
@@ -44,9 +44,9 @@ export function Dialog({
         role="alertdialog"
         aria-modal="true"
         aria-labelledby="dialog-title"
-        className="relative z-10 w-full max-w-md rounded-[16px] bg-[var(--surface)] border border-[var(--border)] p-5 shadow-[0_8px_30px_rgb(0_0_0_/_0.08)]"
+        className="relative z-10 w-full max-w-sm rounded-[22px] bg-[var(--surface)] border border-[var(--border)] p-6 shadow-[var(--shadow-lg)] animate-pop-in"
       >
-        <h3 id="dialog-title" className="text-[18px] leading-[26px] font-semibold text-[var(--text)]">
+        <h3 id="dialog-title" className="text-[17px] leading-[24px] font-semibold text-[var(--text)]">
           {title}
         </h3>
         {description && (

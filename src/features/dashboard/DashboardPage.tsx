@@ -1,12 +1,6 @@
-import { useState, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
-import {
-  Plus,
-  Pin,
-  ArrowRight,
-  Wallet,
-  Receipt,
-} from 'lucide-react';
+import { useMemo, useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import { ArrowRight, CalendarClock, Pin } from 'lucide-react';
 import { useStore } from '../../store/useStore';
 import {
   accountBalance,
@@ -21,429 +15,295 @@ import {
   selectTotalFundsPkr,
   selectTotalPaidPkr,
 } from '../../store/selectors';
-import { formatShortDate } from '../../lib/dates';
-import {
-  Amount,
-  Button,
-  Card,
-  Checkbox,
-  Chip,
-  Progress,
-  Switch,
-} from '../../components/ui';
-import { CostDetailSheet } from '../costs/CostDetailSheet';
+import { daysUntil, formatShortDate } from '../../lib/dates';
+import { Amount, Checkbox, Chip, Progress } from '../../components/ui';
+import { STATUS_LABEL, STATUS_VARIANT } from '../costs/costUi';
+
+function SectionCard({
+  title,
+  to,
+  linkLabel = 'See all',
+  children,
+}: {
+  title: string;
+  to?: string;
+  linkLabel?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <section className="card p-5">
+      <div className="flex items-center justify-between mb-3">
+        <h2 className="text-[15px] font-semibold tracking-[-0.01em]">{title}</h2>
+        {to && (
+          <Link
+            to={to}
+            className="inline-flex items-center gap-1 text-xs font-medium text-[var(--text-muted)] hover:text-[var(--accent)]"
+          >
+            {linkLabel} <ArrowRight className="w-3.5 h-3.5" />
+          </Link>
+        )}
+      </div>
+      {children}
+    </section>
+  );
+}
 
 export function DashboardPage() {
   const state = useStore();
   const navigate = useNavigate();
   const { settings, accounts, costs, tasks, transactions } = state;
-
   const [includeMaybes, setIncludeMaybes] = useState(false);
-  const [payingCostId, setPayingCostId] = useState<string | null>(null);
 
-  // Pinned upcoming tasks (shown right at the top of the front page)
-  const pinnedTasks = useMemo(() => {
-    const pinnedPending = tasks
-      .filter((t) => t.status !== 'done' && t.pinned)
-      .slice()
-      .sort((a, b) => a.order - b.order);
-
-    // If user hasn't pinned any pending task, fall back to top 3 pending tasks
-    if (pinnedPending.length > 0) return pinnedPending;
-    return tasks
-      .filter((t) => t.status !== 'done')
-      .slice()
-      .sort((a, b) => a.order - b.order)
-      .slice(0, 3);
-  }, [tasks]);
-
-  // Dual totals: actual market rate vs ×300 after-tax rate
-  const totalFundsPkr = selectTotalFundsPkr(state);
-  const totalPaidPkr = selectTotalPaidPkr(state, includeMaybes);
+  const fundsPkr = selectTotalFundsPkr(state);
+  const paidPkr = selectTotalPaidPkr(state, includeMaybes);
   const planMarketPkr = selectPlanTotalMarketPkr(state, includeMaybes);
-  const planAfterTaxPkr = selectPlanTotalEffectivePkr(state, includeMaybes);
+  const planCardPkr = selectPlanTotalEffectivePkr(state, includeMaybes);
+  const leftMarketPkr = Math.max(0, planMarketPkr - paidPkr);
+  const leftCardPkr = Math.max(0, planCardPkr - paidPkr);
+  const gapMarket = fundsPkr - leftMarketPkr;
+  const gapCard = fundsPkr - leftCardPkr;
+  const ok = gapMarket >= 0;
 
-  const remMarketPkr = Math.max(0, planMarketPkr - totalPaidPkr);
-  const remAfterTaxPkr = Math.max(0, planAfterTaxPkr - totalPaidPkr);
+  const paidPct = planMarketPkr > 0 ? Math.min(100, (paidPkr / planMarketPkr) * 100) : 0;
+  const fundedPct =
+    planMarketPkr > 0 ? Math.min(100 - paidPct, (fundsPkr / planMarketPkr) * 100) : 0;
 
-  const gapMarketPkr = totalFundsPkr - remMarketPkr;
-  const gapAfterTaxPkr = totalFundsPkr - remAfterTaxPkr;
+  const upNext = useMemo(() => {
+    const open = tasks.filter((t) => t.status !== 'done').sort((a, b) => a.order - b.order);
+    const pinned = open.filter((t) => t.pinned);
+    return (pinned.length ? pinned : open).slice(0, 5);
+  }, [tasks]);
+  const doneCount = tasks.filter((t) => t.status === 'done').length;
 
-  const paidBarPct =
-    planMarketPkr > 0 ? Math.min(100, (totalPaidPkr / planMarketPkr) * 100) : 0;
-  const fundedBarPct =
-    planMarketPkr > 0
-      ? Math.min(100 - paidBarPct, (totalFundsPkr / planMarketPkr) * 100)
-      : 0;
+  const unpaid = useMemo(
+    () =>
+      getActivePlanCosts(costs)
+        .filter((c) => (includeMaybes || !c.maybe) && costStatus(c, transactions, accounts, settings) !== 'paid')
+        .sort((a, b) => {
+          if (a.dueDate && b.dueDate) return a.dueDate.localeCompare(b.dueDate);
+          if (a.dueDate) return -1;
+          if (b.dueDate) return 1;
+          return a.order - b.order;
+        })
+        .slice(0, 6),
+    [costs, includeMaybes, transactions, accounts, settings]
+  );
 
-  // Main active costs for quick glance
-  const topUnpaidCosts = useMemo(() => {
-    return getActivePlanCosts(costs)
-      .filter(
-        (c) =>
-          (includeMaybes || !c.maybe) &&
-          costStatus(c, transactions, accounts, settings) !== 'paid'
-      )
-      .slice()
-      .sort((a, b) => a.order - b.order);
-  }, [costs, includeMaybes, transactions, accounts, settings]);
+  const keyDates = settings.journey.examDates
+    .map((d) => ({ ...d, days: daysUntil(d.date) }))
+    .filter((d) => d.days >= 0)
+    .sort((a, b) => a.days - b.days)
+    .slice(0, 4);
 
-  const payingCost = costs.find((c) => c.id === payingCostId) ?? null;
+  const liveAccounts = accounts.filter((a) => !a.archived);
 
   return (
     <div className="space-y-4">
-      {/* 1. TOP OF FRONT PAGE: Pinned Upcoming Tasks */}
-      <Card
-        title={
-          <div className="flex items-center gap-2">
-            <Pin className="w-4 h-4 text-[var(--accent)]" />
-            <span>Pinned Upcoming Tasks</span>
-          </div>
-        }
-        action={
-          <button
-            type="button"
-            onClick={() => navigate('/tasks')}
-            className="inline-flex items-center gap-1 text-xs font-medium text-[var(--accent)] hover:underline cursor-pointer"
-          >
-            All tasks <ArrowRight className="w-3.5 h-3.5" />
-          </button>
-        }
+      {/* Hero */}
+      <section
+        className="relative overflow-hidden rounded-[24px] p-6 sm:p-7 text-white shadow-[var(--shadow-md)]"
+        style={{ background: 'linear-gradient(135deg, var(--hero-from), var(--hero-to))' }}
       >
-        {pinnedTasks.length === 0 ? (
-          <div className="flex items-center justify-between text-xs text-[var(--text-muted)] py-2">
-            <span>All tasks done! Pin any task in the Tasks tab to keep it here.</span>
-            <Button size="sm" variant="secondary" onClick={() => navigate('/tasks')}>
-              Open Tasks
-            </Button>
+        <div className="absolute -right-16 -top-20 w-72 h-72 rounded-full bg-white/10 blur-2xl pointer-events-none" />
+        <div className="relative">
+          <div className="flex items-center justify-between gap-3">
+            <p className="text-[13px] font-medium text-white/75">
+              {ok ? 'You’re covered with room to spare' : 'You still need'}
+            </p>
+            <button
+              type="button"
+              onClick={() => setIncludeMaybes((v) => !v)}
+              className={`h-7 px-3 rounded-full text-[11px] font-semibold transition-colors cursor-pointer ${
+                includeMaybes ? 'bg-white text-[var(--hero-from)]' : 'bg-white/15 text-white hover:bg-white/25'
+              }`}
+            >
+              {includeMaybes ? 'With maybes' : 'Confirmed only'}
+            </button>
           </div>
-        ) : (
-          <div className="divide-y divide-[var(--border)]">
-            {pinnedTasks.map((t) => {
-              const linkedCost = t.linkedCostId
-                ? costs.find((c) => c.id === t.linkedCostId)
-                : undefined;
-              const progPct = t.progress
-                ? (t.progress.current / Math.max(1, t.progress.total)) * 100
-                : 0;
-              return (
-                <div
-                  key={t.id}
-                  className="py-2.5 flex flex-col sm:flex-row sm:items-center justify-between gap-2"
-                >
-                  <div className="flex items-start gap-2.5 min-w-0 flex-1">
-                    <div className="mt-0.5">
+
+          <div className="mt-2 flex items-baseline gap-3 flex-wrap">
+            <span className="text-[40px] sm:text-[48px] leading-none font-semibold tracking-[-0.04em] num">
+              <Amount pkr={Math.abs(gapMarket)} className="!text-white" />
+            </span>
+            <span className="text-sm font-medium text-white/80">{ok ? 'surplus' : 'short'}</span>
+          </div>
+          <p className="mt-2 text-xs text-white/70 num">
+            At card rate ×{settings.rates.effective}:{' '}
+            <Amount pkr={Math.abs(gapCard)} compact className="!text-white font-semibold" />{' '}
+            {gapCard >= 0 ? 'surplus' : 'short'}
+          </p>
+
+          <div className="mt-5 h-2 rounded-full bg-white/20 overflow-hidden flex">
+            <div className="bg-white" style={{ width: `${paidPct}%` }} />
+            <div className="bg-white/50" style={{ width: `${fundedPct}%` }} />
+          </div>
+
+          <div className="mt-5 grid grid-cols-2 sm:grid-cols-4 gap-4">
+            {[
+              { label: 'My money', pkr: fundsPkr },
+              { label: 'Total plan', pkr: planMarketPkr },
+              { label: 'Paid', pkr: paidPkr },
+              { label: 'Left to pay', pkr: leftMarketPkr },
+            ].map((k) => (
+              <div key={k.label}>
+                <p className="text-[11px] font-medium uppercase tracking-[0.06em] text-white/60">{k.label}</p>
+                <p className="text-lg font-semibold num mt-0.5">
+                  <Amount pkr={k.pkr} compact className="!text-white" />
+                </p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Key dates */}
+      {keyDates.length > 0 && (
+        <div className="flex gap-2 overflow-x-auto no-scrollbar -mx-1 px-1">
+          {keyDates.map((d) => (
+            <div
+              key={d.id}
+              className="card shrink-0 flex items-center gap-3 px-4 py-3 !rounded-[16px]"
+            >
+              <CalendarClock className="w-4 h-4 text-[var(--accent)]" />
+              <div>
+                <p className="text-xs font-medium">{d.label}</p>
+                <p className="text-[11px] text-[var(--text-muted)] num">
+                  {d.days === 0 ? 'Today' : `in ${d.days} days`} · {formatShortDate(d.date)}
+                </p>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <div className="grid gap-4 lg:grid-cols-2">
+        {/* Up next */}
+        <SectionCard title="Up next" to="/tasks" linkLabel={`${doneCount}/${tasks.length} done`}>
+          {upNext.length === 0 ? (
+            <p className="text-sm text-[var(--text-muted)] py-4 text-center">All tasks done 🎉</p>
+          ) : (
+            <ul className="space-y-1 -mx-2">
+              {upNext.map((t) => {
+                const pct = t.progress ? (t.progress.current / Math.max(1, t.progress.total)) * 100 : null;
+                return (
+                  <li key={t.id} className="flex items-start gap-3 px-2 py-2 rounded-[12px] hover:bg-[var(--surface-2)]/60">
+                    <div className="pt-0.5">
                       <Checkbox
-                        checked={t.status === 'done'}
-                        onChange={(done) =>
-                          state.updateTask(t.id, {
-                            status: done ? 'done' : 'todo',
-                            completedAt: done ? new Date().toISOString() : undefined,
-                          })
+                        checked={false}
+                        onChange={() =>
+                          state.updateTask(t.id, { status: 'done', completedAt: new Date().toISOString() })
                         }
                       />
                     </div>
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className="text-sm font-medium">{t.title}</span>
-                        {t.dueDate && <Chip>{formatShortDate(t.dueDate)}</Chip>}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-1.5">
+                        {t.pinned && <Pin className="w-3 h-3 text-[var(--accent)] shrink-0" />}
+                        <span className="text-sm truncate">{t.title}</span>
                       </div>
-                      {t.progress && (
-                        <div className="mt-1.5 flex items-center gap-2 max-w-xs">
-                          <div className="flex-1">
-                            <Progress value={progPct} />
-                          </div>
-                          <span className="text-[11px] text-[var(--text-muted)] num">
-                            {t.progress.current}/{t.progress.total}
+                      {pct !== null && (
+                        <div className="mt-1.5 flex items-center gap-2 max-w-[220px]">
+                          <Progress value={pct} />
+                          <span className="text-[11px] text-[var(--text-muted)] num shrink-0">
+                            {t.progress!.current}/{t.progress!.total}
                           </span>
-                          <button
-                            type="button"
-                            onClick={() =>
-                              state.updateTask(t.id, {
-                                progress: {
-                                  ...t.progress!,
-                                  current: Math.min(
-                                    t.progress!.total,
-                                    t.progress!.current + 40
-                                  ),
-                                },
-                              })
-                            }
-                            className="rounded-full border border-[var(--border)] px-2 py-0.5 text-[11px] font-medium hover:bg-[var(--surface-2)] cursor-pointer"
-                          >
-                            +40
-                          </button>
                         </div>
                       )}
                     </div>
-                  </div>
-
-                  <div className="flex items-center gap-2 self-end sm:self-center shrink-0">
-                    {linkedCost && (
-                      <button
-                        type="button"
-                        onClick={() => setPayingCostId(linkedCost.id)}
-                        className="rounded-full px-2.5 py-0.5 text-xs font-medium bg-[var(--accent-soft)] text-[var(--accent)] cursor-pointer"
-                      >
-                        <Amount
-                          pkr={costMarketPkr(linkedCost, settings)}
-                          afterTaxPkr={costEffectivePkr(linkedCost, settings)}
-                          usd={costNativeUsd(linkedCost) ?? undefined}
-                          compact
-                        />
-                      </button>
-                    )}
-                    <button
-                      type="button"
-                      onClick={() => state.updateTask(t.id, { pinned: !t.pinned })}
-                      aria-label={t.pinned ? 'Unpin task' : 'Pin task'}
-                      title={t.pinned ? 'Unpin from top' : 'Pin to top'}
-                      className={`p-1.5 rounded-[8px] cursor-pointer ${
-                        t.pinned
-                          ? 'text-[var(--accent)] bg-[var(--accent-soft)]'
-                          : 'text-[var(--text-muted)] hover:bg-[var(--surface-2)]'
-                      }`}
-                    >
-                      <Pin className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
-      </Card>
-
-      {/* 2. Simple Funding Summary Card (Market Rate + Smaller ×300 After-Tax) */}
-      <Card>
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <p className="label-micro">Funding Summary</p>
-          <Switch
-            checked={includeMaybes}
-            onChange={setIncludeMaybes}
-            label="Include maybes"
-          />
-        </div>
-
-        <div className="mt-2 flex flex-col sm:flex-row sm:items-baseline justify-between gap-2">
-          <div>
-            <div className="flex items-baseline gap-2.5 flex-wrap">
-              <span className="text-3xl sm:text-4xl font-semibold num">
-                <Amount
-                  pkr={Math.abs(gapMarketPkr)}
-                  tone={gapMarketPkr >= 0 ? 'positive' : 'negative'}
-                />
-              </span>
-              <span
-                className={`text-sm font-medium ${
-                  gapMarketPkr >= 0
-                    ? 'text-[var(--positive)]'
-                    : 'text-[var(--negative)]'
-                }`}
-              >
-                {gapMarketPkr >= 0 ? 'surplus (market)' : 'short (market)'}
-              </span>
-            </div>
-            <p className="text-xs text-[var(--text-muted)] num mt-1">
-              After tax (×{settings.rates.effective}):{' '}
-              <strong
-                className={
-                  gapAfterTaxPkr >= 0
-                    ? 'text-[var(--positive)]'
-                    : 'text-[var(--negative)]'
-                }
-              >
-                <Amount
-                  pkr={Math.abs(gapAfterTaxPkr)}
-                  tone={gapAfterTaxPkr >= 0 ? 'positive' : 'negative'}
-                />{' '}
-                {gapAfterTaxPkr >= 0 ? 'surplus' : 'short'}
-              </strong>
-            </p>
-          </div>
-
-          {accounts.length === 0 && (
-            <Button size="sm" onClick={() => navigate('/accounts')}>
-              <Wallet className="w-3.5 h-3.5" />+ Add your savings / bank
-            </Button>
-          )}
-        </div>
-
-        {/* Clean progress bar */}
-        <div className="mt-4 h-2.5 rounded-full bg-[var(--surface-2)] overflow-hidden flex">
-          {paidBarPct > 0 && (
-            <div
-              style={{
-                width: `${paidBarPct}%`,
-                backgroundColor: 'var(--positive)',
-              }}
-            />
-          )}
-          {fundedBarPct > 0 && (
-            <div
-              style={{
-                width: `${fundedBarPct}%`,
-                backgroundColor: 'var(--accent)',
-              }}
-            />
-          )}
-        </div>
-
-        {/* 4 compact KPI boxes: mobile 2x2, desktop 4 cols */}
-        <div className="mt-4 grid grid-cols-2 md:grid-cols-4 gap-3">
-          <div className="p-3 rounded-[12px] bg-[var(--surface-2)]">
-            <p className="label-micro">My Funds</p>
-            <p className="text-base sm:text-lg font-semibold num mt-0.5">
-              <Amount pkr={totalFundsPkr} compact />
-            </p>
-          </div>
-          <div className="p-3 rounded-[12px] bg-[var(--surface-2)]">
-            <p className="label-micro">Total Plan (Market)</p>
-            <p className="text-base sm:text-lg font-semibold num mt-0.5">
-              <Amount pkr={planMarketPkr} compact />
-            </p>
-            <p className="text-[11px] text-[var(--text-muted)] num">
-              ×{settings.rates.effective}:{' '}
-              <Amount pkr={planAfterTaxPkr} compact tone="muted" />
-            </p>
-          </div>
-          <div className="p-3 rounded-[12px] bg-[var(--surface-2)]">
-            <p className="label-micro">Paid</p>
-            <p className="text-base sm:text-lg font-semibold num mt-0.5">
-              <Amount pkr={totalPaidPkr} compact tone="positive" />
-            </p>
-          </div>
-          <div className="p-3 rounded-[12px] bg-[var(--surface-2)]">
-            <p className="label-micro">Remaining</p>
-            <p className="text-base sm:text-lg font-semibold num mt-0.5">
-              <Amount pkr={remMarketPkr} compact />
-            </p>
-            <p className="text-[11px] text-[var(--text-muted)] num">
-              ×{settings.rates.effective}:{' '}
-              <Amount pkr={remAfterTaxPkr} compact tone="muted" />
-            </p>
-          </div>
-        </div>
-      </Card>
-
-      {/* 3. Main Costs List (Market rate + smaller ×300 after-tax) */}
-      <Card
-        title="Journey Costs"
-        action={
-          <div className="flex items-center gap-2">
-            <Button size="sm" variant="secondary" onClick={() => navigate('/costs')}>
-              <Receipt className="w-3.5 h-3.5" />
-              Manage costs
-            </Button>
-          </div>
-        }
-      >
-        <div className="divide-y divide-[var(--border)]">
-          {topUnpaidCosts.map((c) => {
-            const mktPkr = costMarketPkr(c, settings);
-            const effPkr = costEffectivePkr(c, settings);
-            const nativeUsd = costNativeUsd(c);
-            return (
-              <div
-                key={c.id}
-                onClick={() => setPayingCostId(c.id)}
-                className="py-3 flex items-center justify-between gap-3 cursor-pointer hover:bg-[var(--surface-2)]/40 rounded-[8px] px-1"
-              >
-                <div className="min-w-0">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <span className="text-sm font-medium">{c.name}</span>
-                    {c.maybe && <Chip>? Maybe</Chip>}
-                    {c.subCosts.length > 0 && (
-                      <span className="text-xs text-[var(--text-muted)]">
-                        ({c.subCosts.filter((s) => s.included && !s.maybe).length} items)
+                    {t.dueDate && (
+                      <span className="text-[11px] text-[var(--text-muted)] num shrink-0 pt-0.5">
+                        {formatShortDate(t.dueDate)}
                       </span>
                     )}
-                  </div>
-                  {nativeUsd !== null && (
-                    <p className="text-xs text-[var(--text-muted)] num">
-                      ${nativeUsd.toLocaleString('en-US')} USD
-                    </p>
-                  )}
-                </div>
-
-                <div className="text-right shrink-0">
-                  <div className="text-sm font-semibold num">
-                    <Amount pkr={mktPkr} usd={nativeUsd ?? undefined} />
-                  </div>
-                  {Math.round(effPkr) !== Math.round(mktPkr) && (
-                    <div className="text-[11px] text-[var(--text-muted)] num">
-                      ×{settings.rates.effective}:{' '}
-                      <Amount
-                        pkr={effPkr}
-                        displayCurrency="PKR"
-                        tone="muted"
-                      />
-                    </div>
-                  )}
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </Card>
-
-      {/* 4. Accounts Quick Strip */}
-      <Card
-        title="Accounts"
-        action={
-          <button
-            type="button"
-            onClick={() => navigate('/accounts')}
-            className="text-xs font-medium text-[var(--accent)] hover:underline cursor-pointer"
-          >
-            Manage →
-          </button>
-        }
-      >
-        {accounts.filter((a) => !a.archived).length === 0 ? (
-          <div className="flex items-center justify-between text-xs text-[var(--text-muted)]">
-            <span>No accounts added yet (or import your private data in Settings).</span>
-            <Button size="sm" variant="secondary" onClick={() => navigate('/accounts')}>
-              <Plus className="w-3.5 h-3.5" />
-              Add account
-            </Button>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
-            {accounts
-              .filter((a) => !a.archived)
-              .map((acc) => {
-                const nativeBal = accountBalance(acc, transactions);
-                const pkrBal = accountBalancePkr(acc, transactions, settings);
-                return (
-                  <div
-                    key={acc.id}
-                    onClick={() => navigate('/accounts')}
-                    className="p-3.5 rounded-[12px] bg-[var(--surface-2)] border border-[var(--border)] cursor-pointer hover:border-[var(--accent)]"
-                  >
-                    <p className="text-xs text-[var(--text-muted)]">
-                      {acc.name} ({acc.currency})
-                    </p>
-                    <p className="text-lg font-semibold num mt-0.5">
-                      <Amount
-                        pkr={pkrBal}
-                        usd={acc.currency === 'USD' ? nativeBal : undefined}
-                        displayCurrency={acc.currency}
-                      />
-                    </p>
-                  </div>
+                  </li>
                 );
               })}
+            </ul>
+          )}
+        </SectionCard>
+
+        {/* To pay */}
+        <SectionCard title="To pay" to="/costs">
+          {unpaid.length === 0 ? (
+            <p className="text-sm text-[var(--text-muted)] py-4 text-center">Everything is paid 🎉</p>
+          ) : (
+            <ul className="space-y-1 -mx-2">
+              {unpaid.map((c) => {
+                const status = costStatus(c, transactions, accounts, settings);
+                const cat = settings.categories.find((x) => x.id === c.categoryId);
+                const mkt = costMarketPkr(c, settings);
+                const card = costEffectivePkr(c, settings);
+                return (
+                  <li key={c.id}>
+                    <button
+                      type="button"
+                      onClick={() => navigate(`/costs?open=${c.id}`)}
+                      className="w-full flex items-center gap-3 px-2 py-2 rounded-[12px] hover:bg-[var(--surface-2)]/60 text-left cursor-pointer"
+                    >
+                      <span className="w-1.5 h-7 rounded-full shrink-0" style={{ backgroundColor: cat?.color ?? 'var(--accent)' }} />
+                      <span className="flex-1 min-w-0">
+                        <span className="flex items-center gap-1.5">
+                          <span className="text-sm truncate">{c.name}</span>
+                          {c.maybe && <Chip variant="maybe">Maybe</Chip>}
+                        </span>
+                        <span className="block text-[11px] text-[var(--text-muted)]">
+                          {c.dueDate ? `Due ${formatShortDate(c.dueDate)}` : cat?.name}
+                        </span>
+                      </span>
+                      {status !== 'planned' && (
+                        <Chip variant={STATUS_VARIANT[status]} className="hidden sm:inline-flex">
+                          {STATUS_LABEL[status]}
+                        </Chip>
+                      )}
+                      <span className="text-right shrink-0">
+                        <span className="block text-sm font-semibold num">
+                          <Amount pkr={mkt} usd={costNativeUsd(c) ?? undefined} />
+                        </span>
+                        {Math.round(card) !== Math.round(mkt) && (
+                          <span className="block text-[11px] text-[var(--text-faint)] num">
+                            card <Amount pkr={card} displayCurrency="PKR" compact tone="muted" />
+                          </span>
+                        )}
+                      </span>
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </SectionCard>
+      </div>
+
+      {/* Money */}
+      <SectionCard title="Money" to="/accounts" linkLabel="Manage">
+        {liveAccounts.length === 0 ? (
+          <div className="flex items-center justify-between gap-3 text-sm text-[var(--text-muted)]">
+            <span>Add your bank or savings to see if you’re covered.</span>
+            <Link to="/accounts" className="text-[var(--accent)] font-medium shrink-0">
+              Add account
+            </Link>
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            {liveAccounts.map((acc) => (
+              <Link
+                key={acc.id}
+                to="/accounts"
+                className="rounded-[14px] bg-[var(--surface-2)] px-4 py-3 hover:bg-[var(--surface-3)] transition-colors"
+              >
+                <p className="text-xs text-[var(--text-muted)] truncate">{acc.name}</p>
+                <p className="text-base font-semibold num mt-0.5">
+                  <Amount
+                    pkr={accountBalancePkr(acc, transactions, settings)}
+                    usd={acc.currency === 'USD' ? accountBalance(acc, transactions) : undefined}
+                    displayCurrency={acc.currency}
+                    compact
+                  />
+                </p>
+              </Link>
+            ))}
           </div>
         )}
-      </Card>
-
-      <CostDetailSheet
-        cost={payingCost}
-        open={Boolean(payingCost)}
-        initialTab="details"
-        onClose={() => setPayingCostId(null)}
-      />
+      </SectionCard>
     </div>
   );
 }

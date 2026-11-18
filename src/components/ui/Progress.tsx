@@ -48,7 +48,7 @@ export function Progress({
           cy={size / 2}
           r={radius}
           fill="none"
-          stroke="var(--surface-2)"
+          stroke="var(--surface-3)"
           strokeWidth={strokeWidth}
         />
         <circle
@@ -73,7 +73,7 @@ export function Progress({
       aria-valuemin={0}
       aria-valuemax={100}
       aria-label={label ?? 'Progress'}
-      className={`h-1.5 w-full rounded-full bg-[var(--surface-2)] overflow-hidden ${className}`}
+      className={`h-1.5 w-full rounded-full bg-[var(--surface-3)] overflow-hidden ${className}`}
     >
       <div
         className="h-full rounded-full transition-all duration-200"

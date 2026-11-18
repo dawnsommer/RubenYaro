@@ -28,7 +28,6 @@ import {
 } from 'lucide-react';
 import { useStore } from '../../store/useStore';
 import {
-  costEffectivePkr,
   costMarketPkr,
   costNativeUsd,
   costStatus,
@@ -50,7 +49,7 @@ import {
   Toast,
   ToastMessage,
 } from '../../components/ui';
-import { CostDetailSheet } from '../costs/CostDetailSheet';
+import { useNavigate } from 'react-router-dom';
 
 type TaskViewMode = 'manual' | 'phase';
 
@@ -149,7 +148,7 @@ function SortableTaskRow({
     <div
       ref={setNodeRef}
       style={style}
-      className="flex items-start justify-between gap-2.5 py-3 px-3 sm:px-4 bg-[var(--surface)] hover:bg-[var(--surface-2)]/50 transition-colors"
+      className="group flex items-start justify-between gap-2.5 py-3 px-3 sm:px-4 bg-[var(--surface)] hover:bg-[var(--surface-2)]/50 transition-colors"
     >
       <div className="flex items-start gap-2.5 flex-1 min-w-0">
         {/* Drag handle */}
@@ -158,7 +157,7 @@ function SortableTaskRow({
           {...attributes}
           {...listeners}
           aria-label="Drag to reorder task"
-          className="mt-0.5 text-[var(--text-muted)] cursor-grab active:cursor-grabbing shrink-0"
+          className="hidden sm:block mt-0.5 text-[var(--text-faint)] cursor-grab active:cursor-grabbing shrink-0 opacity-0 group-hover:opacity-100 transition-opacity"
         >
           <GripVertical className="w-4 h-4" />
         </button>
@@ -186,9 +185,6 @@ function SortableTaskRow({
               {task.title}
             </button>
 
-            {task.pinned && (
-              <Chip variant="accent">Pinned</Chip>
-            )}
 
             {task.dueDate && (
               <Chip>{formatShortDate(task.dueDate)}</Chip>
@@ -208,7 +204,6 @@ function SortableTaskRow({
               >
                 <Amount
                   pkr={costMarketPkr(linkedCost, settings)}
-                  afterTaxPkr={costEffectivePkr(linkedCost, settings)}
                   usd={costNativeUsd(linkedCost) ?? undefined}
                   compact
                 />
@@ -229,10 +224,10 @@ function SortableTaskRow({
                     );
                     state.updateTask(task.id, { checklist: updated });
                   }}
-                  className={`text-xs px-2 py-0.5 rounded-[6px] border cursor-pointer ${
+                  className={`text-xs px-2.5 py-1 rounded-full cursor-pointer transition-colors ${
                     item.done
-                      ? 'border-[var(--positive)] text-[var(--positive)] line-through opacity-70'
-                      : 'border-[var(--border)] text-[var(--text-muted)] hover:text-[var(--text)]'
+                      ? 'bg-[var(--positive-soft)] text-[var(--positive)] line-through'
+                      : 'bg-[var(--surface-2)] text-[var(--text-muted)] hover:text-[var(--text)]'
                   }`}
                 >
                   {item.done ? '✓ ' : '○ '}
@@ -277,10 +272,10 @@ function SortableTaskRow({
           onClick={onTogglePin}
           aria-label={task.pinned ? 'Unpin task' : 'Pin task to top'}
           title={task.pinned ? 'Unpin' : 'Pin to top & Dashboard'}
-          className={`p-1.5 rounded-[8px] cursor-pointer ${
+          className={`p-1.5 rounded-full cursor-pointer transition-opacity ${
             task.pinned
               ? 'bg-[var(--accent-soft)] text-[var(--accent)]'
-              : 'text-[var(--text-muted)] hover:bg-[var(--surface-2)] hover:text-[var(--text)]'
+              : 'text-[var(--text-faint)] hover:bg-[var(--surface-2)] hover:text-[var(--text)] sm:opacity-0 sm:group-hover:opacity-100'
           }`}
         >
           <Pin className="w-3.5 h-3.5" />
@@ -292,7 +287,7 @@ function SortableTaskRow({
           disabled={index === 0}
           aria-label="Move task up"
           title="Move up"
-          className="p-1 rounded-[6px] text-[var(--text-muted)] hover:bg-[var(--surface-2)] disabled:opacity-30 cursor-pointer"
+          className="p-1 rounded-full text-[var(--text-faint)] hover:bg-[var(--surface-2)] hover:text-[var(--text)] disabled:!opacity-20 cursor-pointer sm:opacity-0 sm:group-hover:opacity-100 transition-opacity"
         >
           <ArrowUp className="w-3.5 h-3.5" />
         </button>
@@ -303,7 +298,7 @@ function SortableTaskRow({
           disabled={index === totalCount - 1}
           aria-label="Move task down"
           title="Move down"
-          className="p-1 rounded-[6px] text-[var(--text-muted)] hover:bg-[var(--surface-2)] disabled:opacity-30 cursor-pointer"
+          className="p-1 rounded-full text-[var(--text-faint)] hover:bg-[var(--surface-2)] hover:text-[var(--text)] disabled:!opacity-20 cursor-pointer sm:opacity-0 sm:group-hover:opacity-100 transition-opacity"
         >
           <ArrowDown className="w-3.5 h-3.5" />
         </button>
@@ -321,7 +316,8 @@ export function TasksPage() {
   const [showCompleted, setShowCompleted] = useState(false);
 
   const [toast, setToast] = useState<ToastMessage | null>(null);
-  const [payingCostId, setPayingCostId] = useState<string | null>(null);
+  const navigate = useNavigate();
+  const setPayingCostId = (id: string) => navigate(`/costs?open=${id}`);
 
   // Edit / Add Task Sheet
   const [sheetOpen, setSheetOpen] = useState(false);
@@ -503,15 +499,13 @@ export function TasksPage() {
     setSheetOpen(false);
   };
 
-  const payingCost = costs.find((c) => c.id === payingCostId) ?? null;
 
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <p className="label-micro">To-Do &amp; Milestones</p>
           <div className="flex items-center gap-3 mt-1">
-            <h1 className="text-2xl font-semibold">Tasks</h1>
+            <h1 className="text-[26px] leading-[32px] font-semibold tracking-[-0.03em]">Tasks</h1>
             <div className="flex items-center gap-2 text-xs text-[var(--text-muted)] num">
               <Progress value={overallPct} variant="ring" size={24} />
               <span>
@@ -562,7 +556,7 @@ export function TasksPage() {
       ) : view === 'manual' ? (
         <Card
           noPadding
-          title="To-Do List (Drag or use ↑↓ to reorder, Pin to show on front page)"
+          title="To-do"
         >
           <DndContext
             sensors={sensors}
@@ -735,7 +729,7 @@ export function TasksPage() {
               type="text"
               value={tTitle}
               onChange={(e) => setTTitle(e.target.value)}
-              className="w-full rounded-[10px] bg-[var(--surface-2)] border border-[var(--border)] px-3 py-2 text-sm outline-none focus:border-[var(--accent)]"
+              className="field"
               autoFocus
             />
           </div>
@@ -781,18 +775,11 @@ export function TasksPage() {
               value={tChecklistText}
               onChange={(e) => setTChecklistText(e.target.value)}
               placeholder="CV&#10;Personal statement&#10;LoRs"
-              className="w-full rounded-[10px] bg-[var(--surface-2)] border border-[var(--border)] px-3 py-2 text-sm outline-none"
+              className="field"
             />
           </div>
         </div>
       </Sheet>
-
-      <CostDetailSheet
-        cost={payingCost}
-        open={Boolean(payingCost)}
-        initialTab="payments"
-        onClose={() => setPayingCostId(null)}
-      />
 
       <Toast toast={toast} onDismiss={() => setToast(null)} />
     </div>

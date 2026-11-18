@@ -26,7 +26,7 @@ export function DateInput({
         type="date"
         value={value ?? ''}
         onChange={(e) => onChange(e.target.value ? e.target.value : null)}
-        className="w-full rounded-[10px] bg-[var(--surface-2)] border border-[var(--border)] px-3 py-2 text-sm text-[var(--text)] num outline-none focus:border-[var(--accent)]"
+        className="field num"
         {...props}
       />
     </div>

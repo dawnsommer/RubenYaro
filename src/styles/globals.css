@@ -1,39 +1,119 @@
 @import "tailwindcss";
 @import "./tokens.css";
 
+@custom-variant dark (&:where(.dark, .dark *));
+
 @layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+
   body {
-    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    font-family: 'Geist', 'Inter', system-ui, -apple-system, sans-serif;
     background-color: var(--bg);
     color: var(--text);
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    font-size: 14px;
+    line-height: 20px;
+  }
+
+  ::selection {
+    background: var(--accent-soft);
+    color: var(--text);
   }
 
   *:focus-visible {
     outline: 2px solid var(--accent);
     outline-offset: 2px;
+    border-radius: 6px;
+  }
+
+  input::placeholder,
+  textarea::placeholder {
+    color: var(--text-faint);
+  }
+
+  input[type='date']::-webkit-calendar-picker-indicator {
+    opacity: 0.5;
+    cursor: pointer;
+  }
+  .dark input[type='date']::-webkit-calendar-picker-indicator {
+    filter: invert(1);
+  }
+
+  select {
+    cursor: pointer;
   }
 }
 
 .num {
   font-variant-numeric: tabular-nums;
-  font-feature-settings: "ss01", "cv11";
+  font-feature-settings: "tnum", "ss01";
+  letter-spacing: -0.01em;
 }
 
 .label-micro {
   font-size: 11px;
   line-height: 14px;
   font-weight: 500;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--text-muted);
+}
+
+/* Shared form field look (used by inputs across pages) */
+.field {
+  width: 100%;
+  border-radius: 10px;
+  background: var(--surface-2);
+  border: 1px solid transparent;
+  padding: 8px 12px;
+  font-size: 14px;
+  color: var(--text);
+  outline: none;
+  transition: border-color 150ms, background-color 150ms, box-shadow 150ms;
+}
+.field:hover {
+  background: var(--surface-3);
+}
+.field:focus,
+.field:focus-within {
+  background: var(--surface);
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  box-shadow: var(--shadow-sm);
 }
 
 .privacy .amt {
   filter: blur(6px);
   user-select: none;
 }
+
+@keyframes fade-up {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes pop-in {
+  from { opacity: 0; transform: translateY(12px) scale(0.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+.animate-fade-up { animation: fade-up 220ms cubic-bezier(.2,.8,.2,1) both; }
+.animate-fade-in { animation: fade-in 160ms ease-out both; }
+.animate-pop-in { animation: pop-in 220ms cubic-bezier(.2,.8,.2,1) both; }
+
+.no-scrollbar::-webkit-scrollbar { display: none; }
+.no-scrollbar { scrollbar-width: none; }
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {

@@ -480,8 +480,7 @@ export function AccountsPage() {
     <div className="space-y-6">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <p className="label-micro">Money &amp; Ledger</p>
-          <h1 className="text-[24px] leading-[32px] font-semibold mt-1">Accounts</h1>
+          <h1 className="text-[26px] leading-[32px] font-semibold tracking-[-0.03em]">Money</h1>
         </div>
         <div className="flex items-center gap-2">
           {accounts.length >= 2 && (
@@ -730,7 +729,7 @@ export function AccountsPage() {
               value={accName}
               onChange={(e) => setAccName(e.target.value)}
               placeholder="e.g. Main Bank PKR, USD Card"
-              className="w-full rounded-[10px] bg-[var(--surface-2)] border border-[var(--border)] px-3 py-2 text-sm outline-none focus:border-[var(--accent)]"
+              className="field"
               autoFocus
             />
           </div>
@@ -770,7 +769,7 @@ export function AccountsPage() {
                 value={accOpening}
                 onChange={(e) => setAccOpening(e.target.value)}
                 placeholder="e.g. 4.8m or 950k"
-                className="w-full rounded-[10px] bg-[var(--surface-2)] border border-[var(--border)] px-3 py-2 text-sm num outline-none focus:border-[var(--accent)]"
+                className="field num"
               />
             </div>
             <div>
@@ -782,7 +781,7 @@ export function AccountsPage() {
                 value={accReserved}
                 onChange={(e) => setAccReserved(e.target.value)}
                 placeholder="0"
-                className="w-full rounded-[10px] bg-[var(--surface-2)] border border-[var(--border)] px-3 py-2 text-sm num outline-none focus:border-[var(--accent)]"
+                className="field num"
               />
             </div>
           </div>
@@ -809,7 +808,7 @@ export function AccountsPage() {
               value={accNote}
               onChange={(e) => setAccNote(e.target.value)}
               placeholder="Optional note"
-              className="w-full rounded-[10px] bg-[var(--surface-2)] border border-[var(--border)] px-3 py-2 text-sm outline-none"
+              className="field"
             />
           </div>
         </div>
@@ -865,7 +864,7 @@ export function AccountsPage() {
               value={txAmount}
               onChange={(e) => handleTxAmountChange(e.target.value)}
               placeholder="e.g. 50k"
-              className="w-full rounded-[10px] bg-[var(--surface-2)] border border-[var(--border)] px-3 py-2 text-sm num outline-none focus:border-[var(--accent)]"
+              className="field num"
               autoFocus
             />
           </div>
@@ -879,7 +878,7 @@ export function AccountsPage() {
                 type="text"
                 value={txToAmount}
                 onChange={(e) => setTxToAmount(e.target.value)}
-                className="w-full rounded-[10px] bg-[var(--surface-2)] border border-[var(--border)] px-3 py-2 text-sm num outline-none focus:border-[var(--accent)]"
+                className="field num"
               />
               {impliedRate && (
                 <p className="mt-1 text-xs text-[var(--text-muted)] num">
@@ -900,7 +899,7 @@ export function AccountsPage() {
               value={txNote}
               onChange={(e) => setTxNote(e.target.value)}
               placeholder="Optional description"
-              className="w-full rounded-[10px] bg-[var(--surface-2)] border border-[var(--border)] px-3 py-2 text-sm outline-none"
+              className="field"
             />
           </div>
 

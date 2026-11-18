@@ -1,27 +1,70 @@
+/* RubenYaro v2 theme — calm neutrals, one violet accent, soft status tints. */
 :root {
-  --bg: #F7F7F5;
+  --bg: #F4F4F7;
   --surface: #FFFFFF;
-  --surface-2: #F1F1EF;
-  --border: #E7E7E4;
-  --text: #111113;
-  --text-muted: #6B6B73;
-  --accent: #4F46E5;
-  --accent-soft: #EEF0FF;
-  --positive: #059669;
-  --negative: #E11D48;
-  --warning: #D97706;
+  --surface-2: #F1F1F5;
+  --surface-3: #E8E8EE;
+  --border: #E4E4EA;
+  --border-strong: #D2D2DB;
+  --text: #121218;
+  --text-muted: #6B6B7B;
+  --text-faint: #A0A0AE;
+
+  --accent: #6750F2;
+  --accent-hover: #5A43E6;
+  --accent-fg: #FFFFFF;
+  --accent-soft: #EFECFF;
+
+  --positive: #0E9F6E;
+  --positive-soft: #E5F6EF;
+  --negative: #E5484D;
+  --negative-soft: #FDECEC;
+  --warning: #D9822B;
+  --warning-soft: #FCF1E4;
+  --maybe: #8B5CF6;
+  --maybe-soft: #F3EEFF;
+
+  --shadow-sm: 0 1px 2px rgb(16 16 24 / 0.04), 0 1px 1px rgb(16 16 24 / 0.03);
+  --shadow-md: 0 4px 16px rgb(16 16 24 / 0.06), 0 1px 3px rgb(16 16 24 / 0.04);
+  --shadow-lg: 0 24px 60px rgb(16 16 24 / 0.18), 0 4px 12px rgb(16 16 24 / 0.06);
+
+  --hero-from: #6750F2;
+  --hero-to: #9F7AEA;
+
+  color-scheme: light;
 }
 
 .dark {
-  --bg: #0A0A0B;
-  --surface: #131316;
-  --surface-2: #1B1B1F;
-  --border: #26262B;
-  --text: #F4F4F5;
-  --text-muted: #9A9AA3;
-  --accent: #818CF8;
-  --accent-soft: #1E1B4B;
-  --positive: #34D399;
-  --negative: #FB7185;
-  --warning: #FBBF24;
+  --bg: #0B0B10;
+  --surface: #14141B;
+  --surface-2: #1B1B24;
+  --surface-3: #24242F;
+  --border: #25252F;
+  --border-strong: #33333F;
+  --text: #F2F2F6;
+  --text-muted: #9A9AAB;
+  --text-faint: #636373;
+
+  --accent: #9B8CFF;
+  --accent-hover: #AC9FFF;
+  --accent-fg: #0B0B10;
+  --accent-soft: #221E3D;
+
+  --positive: #3DD68C;
+  --positive-soft: #11291F;
+  --negative: #FF6B6F;
+  --negative-soft: #331719;
+  --warning: #F5A524;
+  --warning-soft: #33240F;
+  --maybe: #B794F6;
+  --maybe-soft: #261C3A;
+
+  --shadow-sm: 0 1px 2px rgb(0 0 0 / 0.4);
+  --shadow-md: 0 4px 16px rgb(0 0 0 / 0.35);
+  --shadow-lg: 0 24px 60px rgb(0 0 0 / 0.6);
+
+  --hero-from: #4B3BC4;
+  --hero-to: #7B5BD6;
+
+  color-scheme: dark;
 }

@@ -26,7 +26,7 @@ export function Segmented<T extends string>({
     <div
       role="tablist"
       aria-label={ariaLabel}
-      className={`inline-flex items-center rounded-full bg-[var(--surface-2)] p-0.5 text-xs font-medium ${className}`}
+      className={`inline-flex items-center rounded-full bg-[var(--surface-2)] p-[3px] text-xs font-medium ${className}`}
     >
       {options.map((opt) => {
         const active = opt.value === value;
@@ -37,11 +37,11 @@ export function Segmented<T extends string>({
             role="tab"
             aria-selected={active}
             onClick={() => onChange(opt.value)}
-            className={`rounded-full transition-colors cursor-pointer ${
+            className={`rounded-full transition-colors cursor-pointer whitespace-nowrap ${
               size === 'sm' ? 'px-3 py-1 text-xs' : 'px-3.5 py-1.5 text-sm'
             } ${
               active
-                ? 'bg-[var(--surface)] text-[var(--text)] shadow-2xs'
+                ? 'bg-[var(--surface)] text-[var(--text)] shadow-[var(--shadow-sm)]'
                 : 'text-[var(--text-muted)] hover:text-[var(--text)]'
             }`}
           >

@@ -18,7 +18,7 @@ export function EmptyState({
 }: EmptyStateProps) {
   return (
     <div
-      className={`flex flex-col items-center justify-center text-center py-10 px-4 rounded-[16px] border border-dashed border-[var(--border)] ${className}`}
+      className={`flex flex-col items-center justify-center text-center py-12 px-4 rounded-[18px] border border-dashed border-[var(--border-strong)] ${className}`}
     >
       {icon && <div className="mb-2 text-[var(--text-muted)]">{icon}</div>}
       <p className="text-sm text-[var(--text-muted)] max-w-sm">{message}</p>
