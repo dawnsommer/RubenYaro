@@ -6,8 +6,8 @@
 |---|---|
 | Project | RubenYaro — USMLE cost + task planner, static SPA on GitHub Pages |
 | Stack | Vite · React 18 · TS strict · Tailwind v4 · Zustand(persist) · HashRouter · recharts · dnd-kit · cmdk · date-fns · vitest |
-| Current checkpoint | **CP7 — in progress** (CP0–CP6 done) |
-| Last updated | 2026-11-18 · by: CP5/CP6 session |
+| Current checkpoint | **CP8 — in progress** (CP0–CP7 done) |
+| Last updated | 2026-11-18 · by: CP7 session |
 | Build status | green (`npm run build && npm test`) |
 | Live URL | n/a (set after CP0 deploy) |
 
@@ -23,15 +23,15 @@ Do them **in order**. One checkpoint ≈ one chat. Don't start the next until "D
 | CP4 | [x] | Accounts + ledger | §6.3, §5.4 | CRUD, deposit/withdraw/transfer (cross-currency), balances, reserved, ledger view, sparkline |
 | CP5 | [x] | Costs (core) | §6.2, §4 selectors | CRUD, sub-costs (expand, Σ, include + Maybe toggles), variants switcher, temporary, recurring, included toggle, archive, drag reorder, views: phase/category/table |
 | CP6 | [x] | Payments + statuses + Timeline view | §6.2 tabs 3–4, §4 | Record payment from cost/account; status auto (Paid/Partial/Due soon/Overdue); Breakdown tab; Timeline view; CSV export |
-| CP7 | [~] | Dashboard | §6.1 | All 9 blocks with real selectors; onboarding empty state |
-| CP8 | [ ] | Tasks + key dates | §6.4, §6.6 Journey | List/Board/Upcoming, quick-add syntax, checklist, progress trackers, linked cost prompt, undo, countdowns, starter checklist |
+| CP7 | [x] | Dashboard | §6.1 | All 9 blocks with real selectors; onboarding empty state |
+| CP8 | [~] | Tasks + key dates | §6.4, §6.6 Journey | List/Board/Upcoming, quick-add syntax, checklist, progress trackers, linked cost prompt, undo, countdowns, starter checklist |
 | CP9 | [ ] | Planner | §6.5 | Affordability, savings goal + cash-flow chart, rate what-if, converter, scenarios |
 | CP10 | [ ] | Settings + ⌘K + privacy + PWA | §6.6, §6.7, §8, §9 | All settings sections; palette; shortcuts; privacy blur; snapshots; backup nudge; offline PWA |
 | CP11 | [ ] | QA + polish + release | §11 | Tests green, Lighthouse ≥90/95, a11y pass, README usage, tagged v1.0.0 |
 
 ## 3. Active work  (only the current checkpoint — overwrite each session)
-- **Goal:** CP7 — Dashboard (§6.1)
-- **Next steps:** 1) Implement `src/features/dashboard/DashboardPage.tsx` with all 9 blocks (Hero funding status with maybes toggle & range, Spending power, 4 KPI cards, Upcoming payments with Mark paid, Cost by phase bars, Cost by category donut, Accounts strip, Tasks snapshot, Countdowns) + 3-step onboarding card when empty.
+- **Goal:** CP8 — Tasks + key dates (§6.4, §6.6 Journey)
+- **Next steps:** 1) Implement `src/features/tasks/TasksPage.tsx` (List by phase, Kanban Board, Upcoming views; inline quick-add syntax `#phase !priority @YYYY-MM-DD`; checklist & progress trackers `+10/+40`; linked cost payment prompt toast & Undo toast; key dates countdowns) 2) Test & commit.
 - **Blockers / questions for user:** none.
 
 ## 4. Decisions (append one line each; never delete)
@@ -50,11 +50,12 @@ Do them **in order**. One checkpoint ≈ one chat. Don't start the next until "D
 - D13 Sanity check at card rate 300 (for tests): confirmed plan ₨4,346,500 → surplus ₨453,500 vs ₨4.8M; maybes +₨456,000 → short ₨2,500.
 
 ## 5. Session log (keep last 3; compress older into §6 as one line)
+- **S8 · 2026-11-18 · CP7** — Built `DashboardPage.tsx` with all 9 blocks, real selectors, maybes toggle, category donut, phase bars, and 3-step onboarding state.
 - **S7 · 2026-11-18 · CP5/CP6** — Implemented `CostsPage.tsx` + `CostDetailSheet.tsx` (sub-costs, variants switcher, maybe/included, temporary/recurring, drag reorder, 4 views, payments, Breakdown tab, CSV export).
 - **S6 · 2026-11-18 · CP4** — Built `selectors.ts` (verified D13 sanity test), `AccountsPage.tsx` with CRUD, cross-currency transfers, sparklines, and ledger view.
-- **S5 · 2026-11-18 · CP3** — Implemented `currency.ts`, `rates.ts` (primary→fallback→12h cache→manual), `parseAmount.ts`, `format.ts`, wired `Amount`/`MoneyInput`/`RateBar`, 18 unit tests passing.
 
 ## 6. History (one line per old session)
+- **S5 · 2026-11-18 · CP3** — Implemented `currency.ts`, `rates.ts` (primary→fallback→12h cache→manual), `parseAmount.ts`, `format.ts`, wired `Amount`/`MoneyInput`/`RateBar`.
 - **S4 · 2026-11-18 · CP2** — Added §4 TypeScript data model, Zustand persist store (`rubenyaro:v1`) with migrations, seed loader, and JSON export/import + seed merge.
 - **S3 · 2026-11-18 · CP1** — Built light/dark tokens.css, all §7.4 UI kit components, and responsive AppShell/Sidebar/BottomNav/RateBar.
 - **S2 · 2026-11-18 · CP0** — Scaffolded Vite + React 18 + TS strict + Tailwind v4, deploy.yml, HashRouter 6 routes, vitest.
