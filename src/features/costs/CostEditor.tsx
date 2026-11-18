@@ -1,5 +1,5 @@
-import { ReactNode, useRef, useState } from "react";
-import { nanoid } from "nanoid";
+import { ReactNode, useRef, useState } from 'react';
+import { nanoid } from 'nanoid';
 import {
   Archive,
   ArchiveRestore,
@@ -10,31 +10,13 @@ import {
   Plus,
   Trash2,
   X,
-} from "lucide-react";
-import { useStore } from "../../store/useStore";
-import {
-  costMaybeExtra,
-  costPaid,
-  costSource,
-  costTotal,
-  subCostTotalPkr,
-} from "../../store/selectors";
-import {
-  computeBreakdown,
-  getConversionContext,
-  moneyToPkr,
-  pkrToUsd,
-} from "../../lib/currency";
-import { parseAmount } from "../../lib/parseAmount";
-import { formatDayMonth, formatShortDate } from "../../lib/dates";
-import {
-  ConversionMode,
-  Cost,
-  CostVariant,
-  Money,
-  Priority,
-  SubCost,
-} from "../../types";
+} from 'lucide-react';
+import { useStore } from '../../store/useStore';
+import { costMaybeExtra, costPaid, costSource, costTotal, subCostTotalPkr } from '../../store/selectors';
+import { computeBreakdown, getConversionContext, moneyToPkr, pkrToUsd } from '../../lib/currency';
+import { parseAmount } from '../../lib/parseAmount';
+import { formatDayMonth, formatShortDate } from '../../lib/dates';
+import { ConversionMode, Cost, CostVariant, Money, Priority, SubCost } from '../../types';
 import {
   Amount,
   Button,
@@ -45,8 +27,8 @@ import {
   Segmented,
   Select,
   Switch,
-} from "../../components/ui";
-import { todayIso } from "./costUi";
+} from '../../components/ui';
+import { todayIso } from './costUi';
 
 export interface CostEditorProps {
   cost: Cost;
@@ -54,15 +36,7 @@ export interface CostEditorProps {
 }
 
 /** Small labelled block used inside the editor. */
-function Section({
-  title,
-  aside,
-  children,
-}: {
-  title: string;
-  aside?: ReactNode;
-  children: ReactNode;
-}) {
+function Section({ title, aside, children }: { title: string; aside?: ReactNode; children: ReactNode }) {
   return (
     <div className="space-y-2">
       <div className="flex items-center justify-between gap-2 min-h-6">
@@ -75,8 +49,8 @@ function Section({
 }
 
 const pill =
-  "relative inline-flex items-center gap-1.5 h-8 px-3 rounded-full border border-[var(--border)] text-xs font-medium " +
-  "text-[var(--text)] hover:border-[var(--border-strong)] transition-colors cursor-pointer";
+  'relative inline-flex items-center gap-1.5 h-8 px-3 rounded-full border border-[var(--border)] text-xs font-medium ' +
+  'text-[var(--text)] hover:border-[var(--border-strong)] transition-colors cursor-pointer';
 
 /** A pill that shows "Label: value" and opens the native picker. */
 function ChipSelect({
@@ -92,15 +66,10 @@ function ChipSelect({
   onChange: (v: string) => void;
   dot?: string;
 }) {
-  const current = options.find((o) => o.value === value)?.label ?? "—";
+  const current = options.find((o) => o.value === value)?.label ?? '—';
   return (
     <label className={pill}>
-      {dot && (
-        <i
-          className="w-2 h-2 rounded-full shrink-0"
-          style={{ backgroundColor: dot }}
-        />
-      )}
+      {dot && <i className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: dot }} />}
       <span className="text-[var(--text-faint)] max-sm:hidden">{label}</span>
       <span className="truncate max-w-[140px]">{current}</span>
       <ChevronDown className="w-3 h-3 text-[var(--text-faint)]" />
@@ -125,7 +94,7 @@ function DatePill({
   value,
   onChange,
   small,
-  emptyLabel = "Due date",
+  emptyLabel = 'Due date',
 }: {
   value?: string;
   onChange: (d: string | undefined) => void;
@@ -144,22 +113,18 @@ function DatePill({
   };
   return (
     <span
-      className={`${pill} shrink-0 whitespace-nowrap ${small ? "!h-7 !px-2.5 !text-[11px]" : ""} ${
-        value ? "" : "!border-dashed text-[var(--text-muted)]"
+      className={`${pill} shrink-0 whitespace-nowrap ${small ? '!h-7 !px-2.5 !text-[11px]' : ''} ${
+        value ? '' : '!border-dashed text-[var(--text-muted)]'
       }`}
     >
-      <button
-        type="button"
-        onClick={open}
-        className="inline-flex items-center gap-1.5 cursor-pointer"
-      >
+      <button type="button" onClick={open} className="inline-flex items-center gap-1.5 cursor-pointer">
         <CalendarDays className="w-3.5 h-3.5 text-[var(--text-faint)]" />
         {value ? (
           <span className="num whitespace-nowrap">
             {small ? formatDayMonth(value) : `Due ${formatShortDate(value)}`}
           </span>
         ) : (
-          <span className={small ? "max-sm:hidden" : ""}>{emptyLabel}</span>
+          <span className={small ? 'max-sm:hidden' : ''}>{emptyLabel}</span>
         )}
       </button>
       {value && (
@@ -177,7 +142,7 @@ function DatePill({
         type="date"
         tabIndex={-1}
         aria-hidden
-        value={value ?? ""}
+        value={value ?? ''}
         onChange={(e) => onChange(e.target.value || undefined)}
         className="absolute left-0 bottom-0 w-full h-0 opacity-0 pointer-events-none"
       />
@@ -185,33 +150,27 @@ function DatePill({
   );
 }
 
-type Status = "sure" | "maybe" | "off";
+type Status = 'sure' | 'maybe' | 'off';
 const statusOf = (x: { included: boolean; maybe: boolean }): Status =>
-  !x.included ? "off" : x.maybe ? "maybe" : "sure";
+  !x.included ? 'off' : x.maybe ? 'maybe' : 'sure';
 const statusPatch = (st: Status) => ({
-  included: st !== "off",
-  maybe: st === "maybe",
+  included: st !== 'off',
+  maybe: st === 'maybe',
 });
 const NEXT: Record<Status, Status> = {
-  sure: "maybe",
-  maybe: "off",
-  off: "sure",
+  sure: 'maybe',
+  maybe: 'off',
+  off: 'sure',
 };
 
 /** Item status chip: tap cycles Counts → Maybe → Off. */
-function StatusChip({
-  status,
-  onChange,
-}: {
-  status: Status;
-  onChange: (s: Status) => void;
-}) {
+function StatusChip({ status, onChange }: { status: Status; onChange: (s: Status) => void }) {
   const cls =
-    status === "sure"
-      ? "bg-[var(--accent-soft)] text-[var(--accent)]"
-      : status === "maybe"
-        ? "bg-[var(--maybe-soft)] text-[var(--maybe)]"
-        : "bg-[var(--surface-2)] text-[var(--text-faint)]";
+    status === 'sure'
+      ? 'bg-[var(--accent-soft)] text-[var(--accent)]'
+      : status === 'maybe'
+        ? 'bg-[var(--maybe-soft)] text-[var(--maybe)]'
+        : 'bg-[var(--surface-2)] text-[var(--text-faint)]';
   return (
     <button
       type="button"
@@ -219,7 +178,7 @@ function StatusChip({
       title="Tap to change: counts → maybe → left out"
       className={`h-7 w-[60px] shrink-0 rounded-full text-[11px] font-semibold cursor-pointer ${cls}`}
     >
-      {status === "sure" ? "Counts" : status === "maybe" ? "Maybe" : "Off"}
+      {status === 'sure' ? 'Counts' : status === 'maybe' ? 'Maybe' : 'Off'}
     </button>
   );
 }
@@ -230,13 +189,11 @@ export function CostEditor({ cost, onClose }: CostEditorProps) {
   const ctx = getConversionContext(settings);
 
   const activeAccounts = accounts.filter((a) => !a.archived);
-  const [payAccountId, setPayAccountId] = useState<string>(
-    activeAccounts[0]?.id ?? "",
-  );
-  const [payAmount, setPayAmount] = useState("");
+  const [payAccountId, setPayAccountId] = useState<string>(activeAccounts[0]?.id ?? '');
+  const [payAmount, setPayAmount] = useState('');
   const [payDate, setPayDate] = useState<string | null>(todayIso());
 
-  const [newSubName, setNewSubName] = useState("");
+  const [newSubName, setNewSubName] = useState('');
   const [newSubMoney, setNewSubMoney] = useState<Money>({
     amount: 0,
     currency: cost.money.currency,
@@ -248,9 +205,7 @@ export function CostEditor({ cost, onClose }: CostEditorProps) {
 
   const src = costSource(cost);
   const hasVariants = Boolean(cost.variants && cost.variants.length > 0);
-  const activeVariantId = hasVariants
-    ? (cost.activeVariantId ?? cost.variants![0].id)
-    : null;
+  const activeVariantId = hasVariants ? (cost.activeVariantId ?? cost.variants![0].id) : null;
 
   const totalPkr = costTotal(cost, settings);
   const maybeExtraPkr = costMaybeExtra(cost, settings);
@@ -258,7 +213,7 @@ export function CostEditor({ cost, onClose }: CostEditorProps) {
   const remainingPkr = Math.max(0, totalPkr - paidPkr);
   const paidPct = totalPkr > 0 ? Math.min(100, (paidPkr / totalPkr) * 100) : 0;
   const payments = transactions
-    .filter((t) => t.type === "payment" && t.costId === cost.id)
+    .filter((t) => t.type === 'payment' && t.costId === cost.id)
     .slice()
     .sort((a, b) => b.date.localeCompare(a.date));
 
@@ -268,9 +223,7 @@ export function CostEditor({ cost, onClose }: CostEditorProps) {
   const patchActiveVariant = (fn: (v: CostVariant) => CostVariant) => {
     if (!cost.variants) return;
     update({
-      variants: cost.variants.map((v) =>
-        v.id === activeVariantId ? fn(v) : v,
-      ),
+      variants: cost.variants.map((v) => (v.id === activeVariantId ? fn(v) : v)),
     });
   };
 
@@ -283,9 +236,7 @@ export function CostEditor({ cost, onClose }: CostEditorProps) {
     if (hasVariants) {
       patchActiveVariant((v) => ({
         ...v,
-        subCosts: v.subCosts.map((sc) =>
-          sc.id === subId ? { ...sc, ...patch } : sc,
-        ),
+        subCosts: v.subCosts.map((sc) => (sc.id === subId ? { ...sc, ...patch } : sc)),
       }));
     } else {
       state.updateSubCost(cost.id, subId, patch);
@@ -315,7 +266,7 @@ export function CostEditor({ cost, onClose }: CostEditorProps) {
             id: nanoid(10),
             name,
             money: newSubMoney,
-            kind: "fixed",
+            kind: 'fixed',
             order: v.subCosts.length,
             included: true,
             maybe: false,
@@ -323,9 +274,9 @@ export function CostEditor({ cost, onClose }: CostEditorProps) {
         ],
       }));
     } else {
-      state.addSubCost(cost.id, { name, money: newSubMoney, kind: "fixed" });
+      state.addSubCost(cost.id, { name, money: newSubMoney, kind: 'fixed' });
     }
-    setNewSubName("");
+    setNewSubName('');
     setNewSubMoney({ amount: 0, currency: newSubMoney.currency });
   };
 
@@ -335,7 +286,7 @@ export function CostEditor({ cost, onClose }: CostEditorProps) {
       : [
           {
             id: nanoid(10),
-            name: "Option 1",
+            name: 'Option 1',
             money: cost.money,
             range: cost.range,
             subCosts: cost.subCosts,
@@ -359,66 +310,55 @@ export function CostEditor({ cost, onClose }: CostEditorProps) {
       update({
         variants: undefined,
         activeVariantId: undefined,
-        ...(keep
-          ? { money: keep.money, range: keep.range, subCosts: keep.subCosts }
-          : {}),
+        ...(keep ? { money: keep.money, range: keep.range, subCosts: keep.subCosts } : {}),
       });
     } else {
       update({
         variants: rest,
-        activeVariantId:
-          activeVariantId === id ? rest[0].id : (activeVariantId ?? undefined),
+        activeVariantId: activeVariantId === id ? rest[0].id : (activeVariantId ?? undefined),
       });
     }
   };
 
   // ---- payments --------------------------------------------------------------
-  const payAccount =
-    activeAccounts.find((a) => a.id === payAccountId) ?? activeAccounts[0];
+  const payAccount = activeAccounts.find((a) => a.id === payAccountId) ?? activeAccounts[0];
   const remainingInAcc = payAccount
-    ? payAccount.currency === "PKR"
+    ? payAccount.currency === 'PKR'
       ? remainingPkr
       : pkrToUsd(
           remainingPkr,
           cost.conversionMode ?? settings.defaultConversionMode,
           settings.rates.market,
           settings.rates.effective,
-          cost.tax ?? settings.defaultTax,
+          cost.tax ?? settings.defaultTax
         )
     : 0;
 
   const recordPayment = () => {
     if (!payAccount) return;
-    const amt = payAmount.trim()
-      ? (parseAmount(payAmount) ?? 0)
-      : Math.round(remainingInAcc * 100) / 100;
+    const amt = payAmount.trim() ? (parseAmount(payAmount) ?? 0) : Math.round(remainingInAcc * 100) / 100;
     if (amt <= 0) return;
     state.addTransaction({
-      type: "payment",
+      type: 'payment',
       date: payDate ?? todayIso(),
       accountId: payAccount.id,
       costId: cost.id,
       amount: amt,
       note: `Payment for ${cost.name}`,
     });
-    setPayAmount("");
+    setPayAmount('');
   };
 
   // ---- breakdown -------------------------------------------------------------
   const breakdowns = [
-    { title: "Market", b: computeBreakdown(src.money, ctx, "market") },
+    { title: 'Market', b: computeBreakdown(src.money, ctx, 'market') },
     {
       title: `Card ×${settings.rates.effective}`,
-      b: computeBreakdown(src.money, ctx, "effective"),
+      b: computeBreakdown(src.money, ctx, 'effective'),
     },
     {
-      title: "Market + tax",
-      b: computeBreakdown(
-        src.money,
-        ctx,
-        "detailed",
-        cost.tax ?? settings.defaultTax,
-      ),
+      title: 'Market + tax',
+      b: computeBreakdown(src.money, ctx, 'detailed', cost.tax ?? settings.defaultTax),
     },
   ];
 
@@ -455,9 +395,7 @@ export function CostEditor({ cost, onClose }: CostEditorProps) {
         />
         {src.subCosts.length > 0 ? (
           <div className="field !bg-[var(--surface-2)] font-semibold num flex items-center justify-between gap-2">
-            <span className="text-xs font-medium text-[var(--text-muted)]">
-              Total of items
-            </span>
+            <span className="text-xs font-medium text-[var(--text-muted)]">Total of items</span>
             <Amount pkr={totalPkr} showSecondary />
           </div>
         ) : (
@@ -466,11 +404,7 @@ export function CostEditor({ cost, onClose }: CostEditorProps) {
             onChange={setMoney}
             conversionMode={cost.conversionMode}
             tax={cost.tax}
-            placeholder={
-              cost.recurrence
-                ? "Each time · e.g. 1.2k"
-                : "Amount · e.g. 1.2k, 3 lakh"
-            }
+            placeholder={cost.recurrence ? 'Each time · e.g. 1.2k' : 'Amount · e.g. 1.2k, 3 lakh'}
           />
         )}
       </div>
@@ -480,19 +414,16 @@ export function CostEditor({ cost, onClose }: CostEditorProps) {
         <Segmented
           ariaLabel="Counts in plan"
           options={[
-            { value: "sure", label: "In plan" },
-            { value: "maybe", label: "Maybe" },
-            { value: "off", label: "Left out" },
+            { value: 'sure', label: 'In plan' },
+            { value: 'maybe', label: 'Maybe' },
+            { value: 'off', label: 'Left out' },
           ]}
           value={status}
           onChange={(st) => update(statusPatch(st as Status))}
           className="w-full sm:w-auto [&>button]:flex-1"
         />
         <div className="flex flex-wrap items-center gap-2">
-          <DatePill
-            value={cost.dueDate}
-            onChange={(d) => update({ dueDate: d })}
-          />
+          <DatePill value={cost.dueDate} onChange={(d) => update({ dueDate: d })} />
           <ChipSelect
             label="Category"
             value={cost.categoryId}
@@ -517,9 +448,9 @@ export function CostEditor({ cost, onClose }: CostEditorProps) {
             value={cost.priority}
             onChange={(p) => update({ priority: p as Priority })}
             options={[
-              { value: "must", label: "Must" },
-              { value: "should", label: "Should" },
-              { value: "nice", label: "Nice to have" },
+              { value: 'must', label: 'Must' },
+              { value: 'should', label: 'Should' },
+              { value: 'nice', label: 'Nice to have' },
             ]}
           />
           {cost.verify && (
@@ -537,11 +468,7 @@ export function CostEditor({ cost, onClose }: CostEditorProps) {
       {hasVariants && (
         <Section
           title="Pricing options"
-          aside={
-            <span className="text-xs text-[var(--text-faint)]">
-              Only the selected one counts
-            </span>
-          }
+          aside={<span className="text-xs text-[var(--text-faint)]">Only the selected one counts</span>}
         >
           <div className="flex flex-wrap gap-2">
             {cost.variants!.map((v) => {
@@ -559,16 +486,14 @@ export function CostEditor({ cost, onClose }: CostEditorProps) {
                   onClick={() => update({ activeVariantId: v.id })}
                   className={`text-left rounded-[14px] border px-3.5 py-2 transition-colors cursor-pointer ${
                     active
-                      ? "border-[var(--accent)] bg-[var(--accent-soft)]"
-                      : "border-[var(--border)] hover:border-[var(--border-strong)]"
+                      ? 'border-[var(--accent)] bg-[var(--accent-soft)]'
+                      : 'border-[var(--border)] hover:border-[var(--border-strong)]'
                   }`}
                 >
                   <span className="flex items-center gap-1.5 text-xs font-medium text-[var(--text-muted)]">
                     {v.name}
                     {lowestVariantId === v.id && (
-                      <span className="text-[10px] font-semibold text-[var(--positive)]">
-                        LOWEST
-                      </span>
+                      <span className="text-[10px] font-semibold text-[var(--positive)]">LOWEST</span>
                     )}
                   </span>
                   <span className="block text-sm font-semibold num mt-0.5">
@@ -583,7 +508,7 @@ export function CostEditor({ cost, onClose }: CostEditorProps) {
 
       {/* 3 · items (sub-costs) */}
       <Section
-        title={src.subCosts.length ? `Items · ${src.subCosts.length}` : "Items"}
+        title={src.subCosts.length ? `Items · ${src.subCosts.length}` : 'Items'}
         aside={
           maybeExtraPkr > 0 ? (
             <span className="text-xs text-[var(--maybe)] num">
@@ -597,10 +522,7 @@ export function CostEditor({ cost, onClose }: CostEditorProps) {
           {src.subCosts.map((sc) => {
             const st = statusOf(sc);
             return (
-              <div
-                key={sc.id}
-                className={`px-3 py-2 ${st === "off" ? "bg-[var(--surface-2)]/40" : ""}`}
-              >
+              <div key={sc.id} className={`px-3 py-2 ${st === 'off' ? 'bg-[var(--surface-2)]/40' : ''}`}>
                 <div className="flex items-center gap-2">
                   <input
                     type="text"
@@ -608,9 +530,7 @@ export function CostEditor({ cost, onClose }: CostEditorProps) {
                     onChange={(e) => updateSub(sc.id, { name: e.target.value })}
                     aria-label="Item name"
                     className={`flex-1 min-w-0 bg-transparent text-sm font-medium outline-none ${
-                      st === "off"
-                        ? "line-through text-[var(--text-faint)]"
-                        : ""
+                      st === 'off' ? 'line-through text-[var(--text-faint)]' : ''
                     }`}
                   />
                   <MoneyInput
@@ -629,14 +549,11 @@ export function CostEditor({ cost, onClose }: CostEditorProps) {
                   </button>
                 </div>
                 <div className="mt-1.5 flex items-center gap-2">
-                  <StatusChip
-                    status={st}
-                    onChange={(n) => updateSub(sc.id, statusPatch(n))}
-                  />
+                  <StatusChip status={st} onChange={(n) => updateSub(sc.id, statusPatch(n))} />
                   <DatePill
                     small
                     value={sc.dueDate}
-                    emptyLabel={cost.dueDate ? `Due with cost` : "Due date"}
+                    emptyLabel={cost.dueDate ? `Due with cost` : 'Due date'}
                     onChange={(d) => updateSub(sc.id, { dueDate: d })}
                   />
                   <MoneyInput
@@ -646,11 +563,7 @@ export function CostEditor({ cost, onClose }: CostEditorProps) {
                     className="sm:!hidden flex-1 min-w-[110px]"
                   />
                   <span className="max-sm:hidden ml-auto text-[11px] text-[var(--text-faint)] num">
-                    <Amount
-                      pkr={subCostTotalPkr(cost, sc, settings)}
-                      compact
-                      tone="muted"
-                    />
+                    <Amount pkr={subCostTotalPkr(cost, sc, settings)} compact tone="muted" />
                   </span>
                 </div>
               </div>
@@ -662,12 +575,8 @@ export function CostEditor({ cost, onClose }: CostEditorProps) {
               type="text"
               value={newSubName}
               onChange={(e) => setNewSubName(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && addSub()}
-              placeholder={
-                src.subCosts.length
-                  ? "Add item…"
-                  : "Split into items (e.g. fee, ticket)…"
-              }
+              onKeyDown={(e) => e.key === 'Enter' && addSub()}
+              placeholder={src.subCosts.length ? 'Add item…' : 'Split into items (e.g. fee, ticket)…'}
               className="flex-1 min-w-[60%] sm:min-w-0 h-8 bg-transparent text-sm outline-none"
             />
             <MoneyInput
@@ -677,12 +586,7 @@ export function CostEditor({ cost, onClose }: CostEditorProps) {
               onEnter={addSub}
               className="flex-1 min-w-[180px] sm:flex-none sm:w-[170px]"
             />
-            <Button
-              size="sm"
-              variant="secondary"
-              onClick={addSub}
-              disabled={!newSubName.trim()}
-            >
+            <Button size="sm" variant="secondary" onClick={addSub} disabled={!newSubName.trim()}>
               Add
             </Button>
           </div>
@@ -694,11 +598,7 @@ export function CostEditor({ cost, onClose }: CostEditorProps) {
         title="Paid"
         aside={
           activeAccounts.length > 0 && remainingPkr > 0.5 && !payOpen ? (
-            <Button
-              size="sm"
-              variant="secondary"
-              onClick={() => setPayOpen(true)}
-            >
+            <Button size="sm" variant="secondary" onClick={() => setPayOpen(true)}>
               <Plus className="w-3.5 h-3.5" /> Record payment
             </Button>
           ) : undefined
@@ -708,17 +608,11 @@ export function CostEditor({ cost, onClose }: CostEditorProps) {
           <Progress value={paidPct} tone="positive" className="flex-1" />
           <span className="text-xs text-[var(--text-muted)] num whitespace-nowrap">
             {remainingPkr <= 0.5 && totalPkr > 0 ? (
-              <span className="font-medium text-[var(--positive)]">
-                Fully paid
-              </span>
+              <span className="font-medium text-[var(--positive)]">Fully paid</span>
             ) : (
               <>
-                <Amount
-                  pkr={paidPkr}
-                  compact
-                  tone={paidPkr > 0 ? "positive" : "muted"}
-                />{" "}
-                of <Amount pkr={totalPkr} compact />
+                <Amount pkr={paidPkr} compact tone={paidPkr > 0 ? 'positive' : 'muted'} /> of{' '}
+                <Amount pkr={totalPkr} compact />
               </>
             )}
           </span>
@@ -732,7 +626,7 @@ export function CostEditor({ cost, onClose }: CostEditorProps) {
           <div className="flex flex-wrap items-end gap-2 rounded-[14px] bg-[var(--surface-2)]/60 p-3 animate-fade-in">
             <Select
               label="From"
-              value={payAccount?.id ?? ""}
+              value={payAccount?.id ?? ''}
               onChange={setPayAccountId}
               options={activeAccounts.map((a) => ({
                 value: a.id,
@@ -749,25 +643,16 @@ export function CostEditor({ cost, onClose }: CostEditorProps) {
                 inputMode="decimal"
                 value={payAmount}
                 onChange={(e) => setPayAmount(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && recordPayment()}
-                placeholder={Math.round(remainingInAcc).toLocaleString("en-US")}
+                onKeyDown={(e) => e.key === 'Enter' && recordPayment()}
+                placeholder={Math.round(remainingInAcc).toLocaleString('en-US')}
                 className="field num"
               />
             </div>
-            <DateInput
-              label="Date"
-              value={payDate}
-              onChange={setPayDate}
-              className="w-[140px]"
-            />
+            <DateInput label="Date" value={payDate} onChange={setPayDate} className="w-[140px]" />
             <Button onClick={recordPayment} className="h-[38px]">
-              {payAmount.trim() ? "Record" : "Pay all"}
+              {payAmount.trim() ? 'Record' : 'Pay all'}
             </Button>
-            <Button
-              variant="ghost"
-              onClick={() => setPayOpen(false)}
-              className="h-[38px]"
-            >
+            <Button variant="ghost" onClick={() => setPayOpen(false)} className="h-[38px]">
               Cancel
             </Button>
           </div>
@@ -776,24 +661,17 @@ export function CostEditor({ cost, onClose }: CostEditorProps) {
           <ul className="text-xs divide-y divide-[var(--border)]">
             {payments.map((p) => {
               const acc = accounts.find((a) => a.id === p.accountId);
-              const curr = acc?.currency ?? "PKR";
-              const pkrVal = moneyToPkr(
-                { amount: p.amount, currency: curr },
-                ctx,
-                "effective",
-              );
+              const curr = acc?.currency ?? 'PKR';
+              const pkrVal = moneyToPkr({ amount: p.amount, currency: curr }, ctx, 'effective');
               return (
-                <li
-                  key={p.id}
-                  className="flex items-center justify-between gap-2 py-2"
-                >
+                <li key={p.id} className="flex items-center justify-between gap-2 py-2">
                   <span className="text-[var(--text-muted)]">
-                    {formatShortDate(p.date)} · {acc?.name ?? "Account"}
+                    {formatShortDate(p.date)} · {acc?.name ?? 'Account'}
                   </span>
                   <span className="flex items-center gap-2">
                     <Amount
                       pkr={pkrVal}
-                      usd={curr === "USD" ? p.amount : undefined}
+                      usd={curr === 'USD' ? p.amount : undefined}
                       displayCurrency={curr}
                       tone="positive"
                       className="font-medium"
@@ -823,41 +701,31 @@ export function CostEditor({ cost, onClose }: CostEditorProps) {
         >
           <span>More options</span>
           <span className="flex items-center gap-2 text-xs text-[var(--text-faint)]">
-            <span className="hidden sm:inline">
-              estimate · repeat · dates · options · rate · notes
-            </span>
-            <ChevronDown
-              className={`w-4 h-4 transition-transform ${moreOpen ? "rotate-180" : ""}`}
-            />
+            <span className="hidden sm:inline">estimate · repeat · dates · options · rate · notes</span>
+            <ChevronDown className={`w-4 h-4 transition-transform ${moreOpen ? 'rotate-180' : ''}`} />
           </span>
         </button>
         {moreOpen && (
           <div className="px-4 pb-4 space-y-5 border-t border-[var(--border)] pt-4 animate-fade-in">
             <Switch
-              checked={cost.kind === "estimate"}
-              onChange={(on) => update({ kind: on ? "estimate" : "fixed" })}
+              checked={cost.kind === 'estimate'}
+              onChange={(on) => update({ kind: on ? 'estimate' : 'fixed' })}
               label="Price is an estimate (set a low–high range)"
             />
-            {cost.kind === "estimate" && (
+            {cost.kind === 'estimate' && (
               <div className="grid grid-cols-2 gap-3">
-                {(["low", "high"] as const).map((k) => (
+                {(['low', 'high'] as const).map((k) => (
                   <div key={k}>
                     <label className="block text-xs font-medium text-[var(--text-muted)] mb-1.5">
                       Estimate {k} ({src.money.currency})
                     </label>
                     <input
                       type="number"
-                      value={src.range?.[k] ?? ""}
+                      value={src.range?.[k] ?? ''}
                       onChange={(e) => {
                         const v = parseFloat(e.target.value) || 0;
-                        const low =
-                          k === "low"
-                            ? v
-                            : (src.range?.low ?? src.money.amount);
-                        const high =
-                          k === "high"
-                            ? v
-                            : (src.range?.high ?? src.money.amount);
+                        const low = k === 'low' ? v : (src.range?.low ?? src.money.amount);
+                        const high = k === 'high' ? v : (src.range?.high ?? src.money.amount);
                         update({ range: { low, high } });
                       }}
                       className="field num"
@@ -874,7 +742,7 @@ export function CostEditor({ cost, onClose }: CostEditorProps) {
                   update({
                     recurrence: on
                       ? {
-                          frequency: "monthly",
+                          frequency: 'monthly',
                           interval: 1,
                           occurrences: 3,
                           startDate: todayIso(),
@@ -893,20 +761,18 @@ export function CostEditor({ cost, onClose }: CostEditorProps) {
                       update({
                         recurrence: {
                           ...cost.recurrence!,
-                          frequency: f as "weekly" | "monthly" | "yearly",
+                          frequency: f as 'weekly' | 'monthly' | 'yearly',
                         },
                       })
                     }
                     options={[
-                      { value: "weekly", label: "Week" },
-                      { value: "monthly", label: "Month" },
-                      { value: "yearly", label: "Year" },
+                      { value: 'weekly', label: 'Week' },
+                      { value: 'monthly', label: 'Month' },
+                      { value: 'yearly', label: 'Year' },
                     ]}
                   />
                   <div>
-                    <label className="block text-xs font-medium text-[var(--text-muted)] mb-1.5">
-                      Times
-                    </label>
+                    <label className="block text-xs font-medium text-[var(--text-muted)] mb-1.5">Times</label>
                     <input
                       type="number"
                       min="1"
@@ -915,10 +781,7 @@ export function CostEditor({ cost, onClose }: CostEditorProps) {
                         update({
                           recurrence: {
                             ...cost.recurrence!,
-                            occurrences: Math.max(
-                              1,
-                              parseInt(e.target.value, 10) || 1,
-                            ),
+                            occurrences: Math.max(1, parseInt(e.target.value, 10) || 1),
                           },
                         })
                       }
@@ -946,9 +809,7 @@ export function CostEditor({ cost, onClose }: CostEditorProps) {
                 checked={Boolean(cost.temporary)}
                 onChange={(on) =>
                   update({
-                    temporary: on
-                      ? { start: todayIso(), end: "2027-06-01" }
-                      : undefined,
+                    temporary: on ? { start: todayIso(), end: '2027-06-01' } : undefined,
                   })
                 }
                 label="Only counts between two dates"
@@ -999,7 +860,7 @@ export function CostEditor({ cost, onClose }: CostEditorProps) {
                       onChange={(e) =>
                         update({
                           variants: cost.variants!.map((x) =>
-                            x.id === v.id ? { ...x, name: e.target.value } : x,
+                            x.id === v.id ? { ...x, name: e.target.value } : x
                           ),
                         })
                       }
@@ -1020,46 +881,35 @@ export function CostEditor({ cost, onClose }: CostEditorProps) {
             <div className="space-y-2">
               <Select
                 label="Conversion for this cost"
-                value={cost.conversionMode ?? "default"}
+                value={cost.conversionMode ?? 'default'}
                 onChange={(v) =>
                   update({
-                    conversionMode:
-                      v === "default" ? undefined : (v as ConversionMode),
+                    conversionMode: v === 'default' ? undefined : (v as ConversionMode),
                   })
                 }
                 options={[
                   {
-                    value: "default",
+                    value: 'default',
                     label: `Default (${settings.defaultConversionMode})`,
                   },
                   {
-                    value: "effective",
+                    value: 'effective',
                     label: `Card rate ₨${settings.rates.effective}`,
                   },
                   {
-                    value: "market",
+                    value: 'market',
                     label: `Market ₨${settings.rates.market}`,
                   },
-                  { value: "detailed", label: "Market + tax" },
+                  { value: 'detailed', label: 'Market + tax' },
                 ]}
               />
-              {src.money.currency === "USD" && src.money.amount > 0 && (
+              {src.money.currency === 'USD' && src.money.amount > 0 && (
                 <div className="grid grid-cols-3 gap-2">
                   {breakdowns.map(({ title, b }) => (
-                    <div
-                      key={title}
-                      className="rounded-[12px] bg-[var(--surface-2)] px-3 py-2"
-                    >
-                      <p className="text-[11px] text-[var(--text-muted)]">
-                        {title}
-                      </p>
+                    <div key={title} className="rounded-[12px] bg-[var(--surface-2)] px-3 py-2">
+                      <p className="text-[11px] text-[var(--text-muted)]">{title}</p>
                       <p className="text-sm font-semibold num">
-                        <Amount
-                          pkr={b.totalPkr}
-                          usd={b.usd}
-                          displayCurrency="PKR"
-                          compact
-                        />
+                        <Amount pkr={b.totalPkr} usd={b.usd} displayCurrency="PKR" compact />
                       </p>
                     </div>
                   ))}
@@ -1069,29 +919,21 @@ export function CostEditor({ cost, onClose }: CostEditorProps) {
 
             <div className="grid gap-3 sm:grid-cols-2">
               <div>
-                <label className="block text-xs font-medium text-[var(--text-muted)] mb-1.5">
-                  Notes
-                </label>
+                <label className="block text-xs font-medium text-[var(--text-muted)] mb-1.5">Notes</label>
                 <textarea
                   rows={2}
-                  value={cost.note ?? ""}
-                  onChange={(e) =>
-                    update({ note: e.target.value || undefined })
-                  }
+                  value={cost.note ?? ''}
+                  onChange={(e) => update({ note: e.target.value || undefined })}
                   className="field resize-none"
                 />
               </div>
               <div>
-                <label className="block text-xs font-medium text-[var(--text-muted)] mb-1.5">
-                  Link
-                </label>
+                <label className="block text-xs font-medium text-[var(--text-muted)] mb-1.5">Link</label>
                 <div className="flex items-center gap-2">
                   <input
                     type="url"
-                    value={cost.url ?? ""}
-                    onChange={(e) =>
-                      update({ url: e.target.value || undefined })
-                    }
+                    value={cost.url ?? ''}
+                    onChange={(e) => update({ url: e.target.value || undefined })}
                     placeholder="https://"
                     className="field"
                   />
@@ -1116,17 +958,9 @@ export function CostEditor({ cost, onClose }: CostEditorProps) {
       {/* Footer */}
       <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-1">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => update({ archived: !cost.archived })}
-          >
-            {cost.archived ? (
-              <ArchiveRestore className="w-3.5 h-3.5" />
-            ) : (
-              <Archive className="w-3.5 h-3.5" />
-            )}
-            {cost.archived ? "Restore" : "Archive"}
+          <Button variant="ghost" size="sm" onClick={() => update({ archived: !cost.archived })}>
+            {cost.archived ? <ArchiveRestore className="w-3.5 h-3.5" /> : <Archive className="w-3.5 h-3.5" />}
+            {cost.archived ? 'Restore' : 'Archive'}
           </Button>
           <Button
             variant="ghost"

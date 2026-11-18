@@ -1,16 +1,18 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import {
-  DndContext,
-  closestCenter,
-  PointerSensor,
-  useSensor,
-  useSensors,
-  DragEndEvent,
-} from '@dnd-kit/core';
+import { DndContext, closestCenter, PointerSensor, useSensor, useSensors, DragEndEvent } from '@dnd-kit/core';
 import { SortableContext, useSortable, verticalListSortingStrategy, arrayMove } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { AlertCircle, ChevronDown, Download, GripVertical, Plus, Receipt, Repeat, Search } from 'lucide-react';
+import {
+  AlertCircle,
+  ChevronDown,
+  Download,
+  GripVertical,
+  Plus,
+  Receipt,
+  Repeat,
+  Search,
+} from 'lucide-react';
 import { useStore } from '../../store/useStore';
 import {
   costEffectivePkr,
@@ -154,11 +156,18 @@ function CostRow({ cost, open, draggable, onToggle }: CostRowProps) {
               tone={cost.maybe ? 'muted' : 'default'}
             />
           </div>
-          {Math.round(cardPkr) !== Math.round(marketPkr) && (
-            <div className="text-[11px] text-[var(--text-faint)] num">
-              card <Amount pkr={cardPkr} displayCurrency="PKR" compact tone="muted" />
-            </div>
-          )}
+          <div className="text-[11px] text-[var(--text-faint)] num whitespace-nowrap">
+            after tax{' '}
+            <Amount
+              pkr={cardPkr}
+              displayCurrency="PKR"
+              compact
+              className={
+                Math.round(cardPkr) !== Math.round(marketPkr) ? 'font-medium !text-[var(--text-muted)]' : ''
+              }
+              tone="muted"
+            />
+          </div>
         </div>
 
         <ChevronDown
@@ -190,7 +199,10 @@ export function CostsPage() {
 
   // Quick add
   const [newName, setNewName] = useState('');
-  const [newMoney, setNewMoney] = useState<Money>({ amount: 0, currency: 'USD' });
+  const [newMoney, setNewMoney] = useState<Money>({
+    amount: 0,
+    currency: 'USD',
+  });
   const [newPhaseId, setNewPhaseId] = useState(settings.phases[0]?.id ?? '');
 
   // Deep link: #/costs?open=<id>
@@ -265,7 +277,13 @@ export function CostsPage() {
     }));
     const known = new Set(source.map((g) => g.id));
     const orphans = visible.filter((c) => !known.has(groupBy === 'phase' ? c.phaseId : c.categoryId));
-    if (orphans.length) list.push({ id: '__other', name: 'Other', color: undefined, costs: orphans });
+    if (orphans.length)
+      list.push({
+        id: '__other',
+        name: 'Other',
+        color: undefined,
+        costs: orphans,
+      });
     return list.filter((g) => g.costs.length > 0);
   }, [visible, groupBy, settings.phases, settings.categories]);
 
@@ -345,7 +363,10 @@ export function CostsPage() {
           </div>
         </div>
         <div className="mt-4 h-1.5 rounded-full bg-[var(--surface-3)] overflow-hidden">
-          <div className="h-full rounded-full bg-[var(--positive)] transition-all" style={{ width: `${paidPct}%` }} />
+          <div
+            className="h-full rounded-full bg-[var(--positive)] transition-all"
+            style={{ width: `${paidPct}%` }}
+          />
         </div>
       </div>
 
@@ -362,7 +383,13 @@ export function CostsPage() {
             className="flex-1 bg-transparent text-sm outline-none py-2 min-w-0"
           />
         </div>
-        <MoneyInput compact value={newMoney} onChange={setNewMoney} onEnter={handleQuickAdd} className="flex-1 sm:flex-none sm:w-[170px]" />
+        <MoneyInput
+          compact
+          value={newMoney}
+          onChange={setNewMoney}
+          onEnter={handleQuickAdd}
+          className="flex-1 sm:flex-none sm:w-[170px]"
+        />
         <select
           value={newPhaseId}
           onChange={(e) => setNewPhaseId(e.target.value)}
@@ -412,7 +439,9 @@ export function CostsPage() {
             type="button"
             onClick={() => setShowArchived((s) => !s)}
             className={`text-xs font-medium px-3 h-8 rounded-full cursor-pointer ${
-              showArchived ? 'bg-[var(--surface-3)] text-[var(--text)]' : 'text-[var(--text-muted)] hover:text-[var(--text)]'
+              showArchived
+                ? 'bg-[var(--surface-3)] text-[var(--text)]'
+                : 'text-[var(--text-muted)] hover:text-[var(--text)]'
             }`}
           >
             {showArchived ? 'Hide archived' : 'Show archived'}
@@ -434,26 +463,35 @@ export function CostsPage() {
       {groups.length === 0 ? (
         <EmptyState
           icon={<Receipt className="w-6 h-6" />}
-          message={costs.length === 0 ? 'No costs yet. Add your first one above.' : 'Nothing matches this filter.'}
+          message={
+            costs.length === 0 ? 'No costs yet. Add your first one above.' : 'Nothing matches this filter.'
+          }
         />
       ) : (
         <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
           <SortableContext items={visible.map((c) => c.id)} strategy={verticalListSortingStrategy}>
             <div className="space-y-5">
               {groups.map((g) => {
-                const sum = g.costs
-                  .filter((c) => c.included && !c.maybe && !c.archived)
-                  .reduce((s, c) => s + costMarketPkr(c, settings), 0);
+                const counted = g.costs.filter((c) => c.included && !c.maybe && !c.archived);
+                const sum = counted.reduce((s, c) => s + costMarketPkr(c, settings), 0);
+                const sumCard = counted.reduce((s, c) => s + costEffectivePkr(c, settings), 0);
                 return (
                   <section key={g.id}>
                     <div className="flex items-center justify-between gap-2 px-1 mb-2">
                       <div className="flex items-center gap-2 min-w-0">
-                        {g.color && <span className="w-2 h-2 rounded-full" style={{ backgroundColor: g.color }} />}
+                        {g.color && (
+                          <span className="w-2 h-2 rounded-full" style={{ backgroundColor: g.color }} />
+                        )}
                         <h2 className="text-[13px] font-semibold truncate">{g.name}</h2>
                         <span className="text-xs text-[var(--text-faint)]">{g.costs.length}</span>
                       </div>
-                      <span className="text-[13px] font-semibold num text-[var(--text-muted)]">
-                        <Amount pkr={sum} tone="muted" />
+                      <span className="text-right leading-tight">
+                        <span className="block text-[13px] font-semibold num text-[var(--text-muted)]">
+                          <Amount pkr={sum} tone="muted" />
+                        </span>
+                        <span className="block text-[11px] num text-[var(--text-faint)] whitespace-nowrap">
+                          after tax <Amount pkr={sumCard} compact tone="muted" />
+                        </span>
                       </span>
                     </div>
                     <div className="card overflow-hidden divide-y divide-[var(--border)]">

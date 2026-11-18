@@ -1,666 +1,592 @@
-import { useState, useMemo } from 'react';
+import { ReactNode, useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
 import {
-  AreaChart,
-  Area,
+  Bar,
+  CartesianGrid,
+  ComposedChart,
+  Line,
+  ReferenceLine,
+  ResponsiveContainer,
+  Tooltip,
   XAxis,
   YAxis,
-  Tooltip,
-  ResponsiveContainer,
 } from 'recharts';
-import { addMonths, differenceInMonths, format, parseISO, isValid } from 'date-fns';
-import { Copy, Check } from 'lucide-react';
+import { CalendarClock, ChevronDown, PiggyBank, TrendingDown, TrendingUp, Wallet } from 'lucide-react';
 import { useStore } from '../../store/useStore';
 import {
-  costMaybeExtra,
-  costSource,
   costTotal,
-  costDueParts,
   getActivePlanCosts,
-  selectGapPkr,
-  selectPlanTotalPkr,
-  selectRemainingPkr,
   selectTotalFundsPkr,
   selectTotalPaidPkr,
 } from '../../store/selectors';
-import {
-  computeBreakdown,
-  getConversionContext,
-  moneyToPkr,
-  pkrToUsd,
-  usdToPkr,
-} from '../../lib/currency';
-import { ConversionMode, Money } from '../../types';
-import {
-  Amount,
-  Button,
-  Card,
-  Chip,
-  DateInput,
-  MoneyInput,
-  Segmented,
-  Select,
-} from '../../components/ui';
+import { getConversionContext, moneyToPkr } from '../../lib/currency';
 import { parseAmount } from '../../lib/parseAmount';
+import { formatDayMonth, formatMonthYear } from '../../lib/dates';
+import { Money } from '../../types';
+import { Amount, Card, Chip, MoneyInput, Segmented } from '../../components/ui';
+import { PageHeader } from '../../components/layout/PageHeader';
+import { buildTimeline, Scenario, scenarioTotal, TimelineBucket } from './timeline';
 
-type ScenarioMode = 'lean' | 'expected' | 'comfortable';
+const monthLabel = (key: string) => (key === 'none' ? 'No date yet' : formatMonthYear(`${key}-01`));
+const shortMonth = (key: string) => {
+  if (key === 'none') return 'Undated';
+  const d = new Date(`${key}-01T00:00:00`);
+  return d.toLocaleDateString('en-GB', { month: 'short', year: '2-digit' });
+};
+const fmtK = (v: number) => {
+  const a = Math.abs(v);
+  const s = a >= 1e6 ? `${(a / 1e6).toFixed(1)}M` : a >= 1e3 ? `${Math.round(a / 1e3)}k` : `${Math.round(a)}`;
+  return `${v < 0 ? '−' : ''}${s}`;
+};
+
+function Stat({
+  icon,
+  label,
+  children,
+  sub,
+}: {
+  icon: ReactNode;
+  label: string;
+  children: ReactNode;
+  sub?: ReactNode;
+}) {
+  return (
+    <div className="min-w-0 rounded-[14px] bg-[var(--surface-2)]/70 px-3.5 py-3">
+      <p className="flex items-center gap-1.5 text-[11px] font-medium text-[var(--text-muted)]">
+        <span className="text-[var(--text-faint)]">{icon}</span>
+        {label}
+      </p>
+      <p className="mt-1 text-[17px] sm:text-xl font-semibold num tracking-[-0.02em] truncate">{children}</p>
+      {sub && <p className="text-[11px] text-[var(--text-faint)] num mt-0.5 truncate">{sub}</p>}
+    </div>
+  );
+}
+
+function MonthRow({ b, open, onToggle }: { b: TimelineBucket; open: boolean; onToggle: () => void }) {
+  const short = b.balanceAfter < -0.5;
+  const empty = b.items.length === 0;
+  return (
+    <div>
+      <button
+        type="button"
+        onClick={onToggle}
+        disabled={empty}
+        className={`w-full flex items-center gap-3 px-4 sm:px-5 py-3 text-left ${
+          empty ? 'cursor-default' : 'cursor-pointer hover:bg-[var(--surface-2)]/60'
+        }`}
+      >
+        <span
+          className={`w-2 h-2 rounded-full shrink-0 ${
+            short ? 'bg-[var(--negative)]' : empty ? 'bg-[var(--surface-3)]' : 'bg-[var(--accent)]'
+          }`}
+        />
+        <span className="flex-1 min-w-0">
+          <span className="block text-sm font-medium">
+            {monthLabel(b.key)}
+            {b.index === 0 && b.key !== 'none' && (
+              <span className="ml-1.5 text-[11px] text-[var(--text-faint)]">now</span>
+            )}
+          </span>
+          <span className="block text-[11px] text-[var(--text-muted)] truncate">
+            {empty ? 'Nothing due' : b.items.map((i) => i.name).join(' · ')}
+          </span>
+        </span>
+        <span className="text-right shrink-0">
+          <span className="block text-sm font-semibold num">
+            {empty ? (
+              <span className="text-[var(--text-faint)]">—</span>
+            ) : (
+              <Amount pkr={b.out} prefix="−" compact />
+            )}
+          </span>
+          <span
+            className={`block text-[11px] num ${short ? 'text-[var(--negative)] font-medium' : 'text-[var(--text-faint)]'}`}
+          >
+            left <Amount pkr={b.balanceAfter} compact className="!text-inherit" />
+          </span>
+        </span>
+        {!empty && (
+          <ChevronDown
+            className={`w-4 h-4 text-[var(--text-faint)] shrink-0 transition-transform ${open ? 'rotate-180' : ''}`}
+          />
+        )}
+      </button>
+      {open && !empty && (
+        <ul className="px-4 sm:px-5 pb-3 -mt-1 space-y-1 animate-fade-in">
+          {b.items.map((it, i) => (
+            <li key={`${it.costId}-${i}`} className="flex items-center gap-2 pl-5 text-[13px]">
+              <Link
+                to={`/costs?open=${it.costId}`}
+                className="flex-1 min-w-0 truncate hover:text-[var(--accent)]"
+              >
+                {it.name}
+              </Link>
+              {it.maybe && <Chip variant="maybe">Maybe</Chip>}
+              {it.overdue && <Chip variant="negative">Overdue</Chip>}
+              {it.date && (
+                <span className="text-[11px] text-[var(--text-faint)] num w-14 text-right">
+                  {formatDayMonth(it.date)}
+                </span>
+              )}
+              <span className="num font-medium w-24 text-right">
+                <Amount pkr={it.pkr} compact />
+              </span>
+            </li>
+          ))}
+          {b.key === 'none' && (
+            <li className="pl-5 pt-1 text-[11px] text-[var(--text-faint)]">
+              Give these a due date in Costs to place them on the timeline.
+            </li>
+          )}
+        </ul>
+      )}
+    </div>
+  );
+}
 
 export function PlannerPage() {
   const state = useStore();
-  const { settings, costs } = state;
-
-  // 1. Affordability check state
-  const [selectedCostId, setSelectedCostId] = useState<string>(costs[0]?.id ?? 'custom');
-  const [customAffordMoney, setCustomAffordMoney] = useState<Money>({
-    amount: 500,
-    currency: 'USD',
-  });
-
-  // 2. Savings goal state
-  const [goalDate, setGoalDate] = useState<string | null>(
-    settings.journey.targetDate ?? '2027-09-01'
-  );
-
-  // 3. Rate what-if state
-  const [whatIfMarket, setWhatIfMarket] = useState<number>(settings.rates.market);
-  const [whatIfEffective, setWhatIfEffective] = useState<number>(
-    settings.rates.effective
-  );
-
-  // 4. Quick converter state
-  const [convMode, setConvMode] = useState<ConversionMode>(
-    settings.defaultConversionMode
-  );
-  const [convTaxPct, setConvTaxPct] = useState<number>(settings.defaultTax.value);
-  const [convUsdText, setConvUsdText] = useState<string>('1000');
-  const [convPkrText, setConvPkrText] = useState<string>(() =>
-    String(
-      Math.round(
-        usdToPkr(
-          1000,
-          settings.defaultConversionMode,
-          settings.rates.market,
-          settings.rates.effective,
-          settings.defaultTax
-        )
-      )
-    )
-  );
-  const [copied, setCopied] = useState(false);
-
-  // 5. Scenario toggles state
-  const [scenario, setScenario] = useState<ScenarioMode>('expected');
-
+  const { settings, costs, transactions, accounts } = state;
   const ctx = getConversionContext(settings);
-  const totalFundsPkr = selectTotalFundsPkr(state);
-  const totalPaidPkr = selectTotalPaidPkr(state);
-  const basePlanPkr = selectPlanTotalPkr(state);
 
-  // 1. Affordability calculation
-  const selectedCostObj =
-    selectedCostId === 'custom'
-      ? null
-      : costs.find((c) => c.id === selectedCostId) ?? null;
-  const affordAmountPkr = selectedCostObj
-    ? costTotal(selectedCostObj, settings)
-    : moneyToPkr(customAffordMoney, ctx);
+  const fundsPkr = selectTotalFundsPkr(state);
+  const paidPkr = selectTotalPaidPkr(state);
 
-  const fundsAfterAffordPkr = totalFundsPkr - affordAmountPkr;
-  const coverageAfterAfford =
-    basePlanPkr > 0
-      ? Math.max(0, ((totalPaidPkr + fundsAfterAffordPkr) / basePlanPkr) * 100)
-      : 100;
+  const [includeMaybes, setIncludeMaybes] = useState(false);
+  const [saveText, setSaveText] = useState('');
+  const monthlySave = Math.max(0, parseAmount(saveText) ?? 0);
+  const [openKey, setOpenKey] = useState<string | null>(null);
 
-  // 2. Savings goal & monthly cash-flow chart
-  const gapPkr = selectGapPkr(state, false);
-  const shortfallPkr = Math.max(0, -gapPkr);
-  const monthsRemaining = useMemo(() => {
-    if (!goalDate) return 6;
-    try {
-      const target = parseISO(goalDate);
-      if (!isValid(target)) return 6;
-      return Math.max(1, differenceInMonths(target, new Date()));
-    } catch {
-      return 6;
-    }
-  }, [goalDate]);
+  const tl = useMemo(
+    () =>
+      buildTimeline({
+        costs,
+        transactions,
+        accounts,
+        settings,
+        fundsPkr,
+        monthlySave,
+        includeMaybes,
+        goalDate: settings.journey.targetDate,
+      }),
+    [costs, transactions, accounts, settings, fundsPkr, monthlySave, includeMaybes]
+  );
+  const buckets = tl.undated ? [...tl.months, tl.undated] : tl.months;
+  const firstOpen = openKey ?? buckets.find((b) => b.items.length)?.key ?? null;
+  const chartData = buckets.map((b) => ({
+    m: shortMonth(b.key),
+    out: Math.round(b.out),
+    left: Math.round(b.balanceAfter),
+  }));
+  const next30 = tl.months[0]?.out ?? 0;
 
-  const monthlySaveNeededPkr = shortfallPkr / monthsRemaining;
+  // ---- scenarios -------------------------------------------------------------
+  const spareFor = (plan: number) => fundsPkr - Math.max(0, plan - paidPkr);
+  const scenarios: { id: Scenario; title: string; hint: string }[] = [
+    { id: 'lean', title: 'Lean', hint: 'Musts only · low estimates' },
+    { id: 'expected', title: 'Expected', hint: 'Your plan as it is' },
+    {
+      id: 'comfortable',
+      title: 'Comfortable',
+      hint: 'High estimates + maybes',
+    },
+  ];
 
-  const cashFlowData = useMemo(() => {
-    const active = getActivePlanCosts(costs).filter((c) => !c.maybe);
-    const totalRemaining = selectRemainingPkr(state, false);
-    const count = Math.min(24, Math.max(3, monthsRemaining));
-    const now = new Date();
-    const rows: {
-      month: string;
-      projectedFunds: number;
-      cumulativeCosts: number;
-      net: number;
-    }[] = [];
+  // ---- can I afford it -------------------------------------------------------
+  const [buy, setBuy] = useState<Money>({ amount: 0, currency: 'USD' });
+  const buyPkr = moneyToPkr(buy, ctx);
+  const planSpare = spareFor(
+    getActivePlanCosts(costs)
+      .filter((c) => !c.maybe)
+      .reduce((s, c) => s + costTotal(c, settings), 0)
+  );
 
-    let firstNegativeMonth: string | null = null;
-    for (let i = 0; i <= count; i++) {
-      const mDate = addMonths(now, i);
-      const mLabel = format(mDate, 'MMM yy');
-      const mIso = format(mDate, 'yyyy-MM-dd');
-
-      // Scheduled costs due up to mIso, or evenly distributed if unscheduled
-      // items with their own due date count on that date (costDueParts)
-      const parts = active.flatMap((c) => costDueParts(c, settings));
-      const scheduledUpTo = parts
-        .filter((p) => p.date && p.date <= mIso)
-        .reduce((s, p) => s + p.pkr, 0);
-      const unscheduledTotal = parts.filter((p) => !p.date).reduce((s, p) => s + p.pkr, 0);
-      const cumCost = Math.min(
-        totalRemaining,
-        scheduledUpTo + (unscheduledTotal * i) / count
-      );
-      const projFunds = totalFundsPkr + monthlySaveNeededPkr * i;
-      const net = projFunds - cumCost;
-      if (net < 0 && !firstNegativeMonth) firstNegativeMonth = mLabel;
-
-      rows.push({
-        month: mLabel,
-        projectedFunds: Math.round(projFunds),
-        cumulativeCosts: Math.round(cumCost),
-        net: Math.round(net),
-      });
-    }
-    return { rows, firstNegativeMonth };
-  }, [
-    costs,
-    monthsRemaining,
-    state,
-    settings,
-    totalFundsPkr,
-    monthlySaveNeededPkr,
-  ]);
-
-  // 3. Rate what-if calculation
-  const whatIfSettings = useMemo(
-    () => ({
+  // ---- dollar moves ----------------------------------------------------------
+  const [ratePct, setRatePct] = useState(0);
+  const planAt = (pct: number) => {
+    const s = {
       ...settings,
       rates: {
         ...settings.rates,
-        market: whatIfMarket,
-        effective: whatIfEffective,
+        market: settings.rates.market * (1 + pct / 100),
+        effective: settings.rates.effective * (1 + pct / 100),
       },
-    }),
-    [settings, whatIfMarket, whatIfEffective]
-  );
-
-  const whatIfPlanPkr = useMemo(() => {
+    };
     return getActivePlanCosts(costs)
       .filter((c) => !c.maybe)
-      .reduce((s, c) => s + costTotal(c, whatIfSettings), 0);
-  }, [costs, whatIfSettings]);
-
-  const whatIfGapPkr = totalFundsPkr - Math.max(0, whatIfPlanPkr - totalPaidPkr);
-
-  // Delta per +10 PKR/USD
-  const plusTenSettings = useMemo(
-    () => ({
+      .reduce((sum, c) => sum + costTotal(c, s), 0);
+  };
+  const basePlan = planAt(0);
+  const movedPlan = planAt(ratePct);
+  const per10 = useMemo(() => {
+    const s = {
       ...settings,
       rates: {
         ...settings.rates,
         market: settings.rates.market + 10,
         effective: settings.rates.effective + 10,
       },
-    }),
-    [settings]
-  );
+    };
+    return (
+      getActivePlanCosts(costs)
+        .filter((c) => !c.maybe)
+        .reduce((sum, c) => sum + costTotal(c, s), 0) - basePlan
+    );
+  }, [costs, settings, basePlan]);
 
-  const plusTenDeltaPkr = useMemo(() => {
-    const plusTenPlan = getActivePlanCosts(costs)
-      .filter((c) => !c.maybe)
-      .reduce((s, c) => s + costTotal(c, plusTenSettings), 0);
-    return Math.max(0, plusTenPlan - basePlanPkr);
-  }, [costs, plusTenSettings, basePlanPkr]);
-
-  // 4. Quick converter handlers
-  const handleConvUsdChange = (raw: string) => {
-    setConvUsdText(raw);
-    const val = parseAmount(raw);
-    if (val !== null && val >= 0) {
-      const pkr = usdToPkr(val, convMode, settings.rates.market, settings.rates.effective, {
-        kind: 'percent',
-        value: convTaxPct,
-      });
-      setConvPkrText(String(Math.round(pkr)));
-    }
-  };
-
-  const handleConvPkrChange = (raw: string) => {
-    setConvPkrText(raw);
-    const val = parseAmount(raw);
-    if (val !== null && val >= 0) {
-      const usd = pkrToUsd(val, convMode, settings.rates.market, settings.rates.effective, {
-        kind: 'percent',
-        value: convTaxPct,
-      });
-      setConvUsdText(String(Math.round(usd * 100) / 100));
-    }
-  };
-
-  const handleConvModeChange = (m: ConversionMode) => {
-    setConvMode(m);
-    const usdVal = parseAmount(convUsdText) ?? 0;
-    const pkr = usdToPkr(usdVal, m, settings.rates.market, settings.rates.effective, {
-      kind: 'percent',
-      value: convTaxPct,
-    });
-    setConvPkrText(String(Math.round(pkr)));
-  };
-
-  const convUsdNum = parseAmount(convUsdText) ?? 0;
-  const convBreakdown = computeBreakdown(
-    { amount: convUsdNum, currency: 'USD' },
-    ctx,
-    convMode,
-    { kind: 'percent', value: convTaxPct }
-  );
-
-  // 5. Scenario calculation (Lean / Expected / Comfortable — display-only, §6.5)
-  const scenarioPlanPkr = useMemo(() => {
-    const active = getActivePlanCosts(costs);
-    let sum = 0;
-    for (const c of active) {
-      if (scenario === 'lean') {
-        if (c.maybe || c.priority !== 'must') continue;
-      } else if (scenario === 'expected') {
-        if (c.maybe) continue;
-      }
-      // Comfortable includes all priorities + maybes
-      const src = costSource(c);
-      const occ = c.recurrence?.occurrences ?? 1;
-      if (src.range && src.subCosts.length === 0) {
-        const bound =
-          scenario === 'lean'
-            ? src.range.low
-            : scenario === 'comfortable'
-              ? src.range.high
-              : src.money.amount;
-        sum +=
-          moneyToPkr(
-            { amount: bound, currency: src.money.currency },
-            ctx,
-            c.conversionMode,
-            c.tax
-          ) * occ;
-      } else {
-        sum += costTotal(c, settings);
-      }
-      if (scenario === 'comfortable') {
-        sum += costMaybeExtra(c, settings);
-      }
-    }
-    return sum;
-  }, [costs, scenario, ctx, settings]);
-
-  const scenarioGapPkr = totalFundsPkr - Math.max(0, scenarioPlanPkr - totalPaidPkr);
+  const short = tl.firstShortKey !== null;
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-[26px] leading-[32px] font-semibold tracking-[-0.03em]">Planner</h1>
-      </div>
+    <div className="space-y-4">
+      <PageHeader title="Planner" subtitle="When your money goes out, month by month" />
 
-      <div className="grid grid-cols-12 gap-4">
-        {/* 5. Scenario toggles (§6.5) */}
-        <Card
-          className="col-span-12"
-          title="Scenario comparison"
-          subtitle="Display-only simulation — does not mutate your saved costs."
-          action={
-            <Segmented
-              ariaLabel="Scenario selector"
-              options={[
-                { value: 'lean', label: 'Lean (low + must)' },
-                { value: 'expected', label: 'Expected (mid)' },
-                { value: 'comfortable', label: 'Comfortable (high + maybes)' },
-              ]}
-              value={scenario}
-              onChange={setScenario}
-            />
-          }
-        >
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-1">
-            <div className="p-3.5 rounded-[12px] bg-[var(--surface-2)]">
-              <p className="label-micro">Scenario plan total</p>
-              <p className="text-xl font-semibold num mt-1">
-                <Amount pkr={scenarioPlanPkr} showSecondary />
-              </p>
-            </div>
-            <div className="p-3.5 rounded-[12px] bg-[var(--surface-2)]">
-              <p className="label-micro">Available funds</p>
-              <p className="text-xl font-semibold num mt-1">
-                <Amount pkr={totalFundsPkr} showSecondary />
-              </p>
-            </div>
-            <div className="p-3.5 rounded-[12px] bg-[var(--surface-2)]">
-              <p className="label-micro">Scenario gap</p>
-              <p className="text-xl font-semibold num mt-1">
-                <Amount
-                  pkr={Math.abs(scenarioGapPkr)}
-                  tone={scenarioGapPkr >= 0 ? 'positive' : 'negative'}
-                />{' '}
-                <span className="text-xs font-medium">
-                  {scenarioGapPkr >= 0 ? 'surplus' : 'short'}
-                </span>
-              </p>
-            </div>
-          </div>
-        </Card>
-
-        {/* 1. Affordability check (§6.5) */}
-        <Card
-          className="col-span-12 lg:col-span-6"
-          title="Affordability check"
-          subtitle="See the immediate impact of paying a specific cost."
-        >
-          <div className="space-y-4">
-            <Select
-              label="Pick a cost (or custom amount)"
-              value={selectedCostId}
-              onChange={setSelectedCostId}
-              options={[
-                ...costs.map((c) => ({ value: c.id, label: c.name })),
-                { value: 'custom', label: 'Custom amount…' },
-              ]}
-            />
-
-            {selectedCostId === 'custom' && (
-              <MoneyInput
-                label="Custom amount"
-                value={customAffordMoney}
-                onChange={setCustomAffordMoney}
-              />
-            )}
-
-            <div className="p-4 rounded-[12px] bg-[var(--surface-2)] border border-[var(--border)] space-y-1.5 text-sm">
-              <p>
-                Cost amount:{' '}
-                <strong className="num">
-                  <Amount pkr={affordAmountPkr} showSecondary />
-                </strong>
-              </p>
-              <p>
-                After paying this you&apos;ll have{' '}
-                <strong className="num">
-                  <Amount
-                    pkr={fundsAfterAffordPkr}
-                    tone={fundsAfterAffordPkr >= 0 ? 'positive' : 'negative'}
-                  />
-                </strong>{' '}
-                left; plan coverage becomes{' '}
-                <strong className="num">{Math.round(coverageAfterAfford)}%</strong>.
-              </p>
-            </div>
-          </div>
-        </Card>
-
-        {/* 3. Rate what-if (§6.5) */}
-        <Card
-          className="col-span-12 lg:col-span-6"
-          title="Exchange rate what-if"
-          subtitle="Slide market or card rate to test PKR depreciation sensitivity."
-          action={
-            <Button
-              size="sm"
-              variant="ghost"
-              onClick={() => {
-                setWhatIfMarket(settings.rates.market);
-                setWhatIfEffective(settings.rates.effective);
-              }}
+      {/* ---------- timeline ---------- */}
+      <Card noPadding>
+        <div className="p-4 sm:p-5 pb-3 space-y-4">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div
+              className={`inline-flex items-center gap-2 text-sm font-semibold ${
+                short ? 'text-[var(--negative)]' : 'text-[var(--positive)]'
+              }`}
             >
-              Reset
-            </Button>
-          }
-        >
-          <div className="space-y-4">
-            <div>
-              <div className="flex justify-between text-xs mb-1">
-                <span className="text-[var(--text-muted)]">Market rate</span>
-                <span className="font-semibold num">₨ {whatIfMarket} / USD</span>
-              </div>
-              <input
-                type="range"
-                min={Math.round(settings.rates.market * 0.75)}
-                max={Math.round(settings.rates.market * 1.25)}
-                step="1"
-                value={whatIfMarket}
-                onChange={(e) => setWhatIfMarket(Number(e.target.value))}
-                className="w-full accent-[var(--accent)]"
-              />
+              {short ? <TrendingDown className="w-4 h-4" /> : <TrendingUp className="w-4 h-4" />}
+              {!short
+                ? 'Your money lasts the whole plan'
+                : tl.firstShortKey === 'none'
+                  ? 'Your undated costs leave you short'
+                  : `You run short in ${monthLabel(tl.firstShortKey!)}`}
             </div>
+            <Segmented
+              ariaLabel="Include maybes"
+              size="sm"
+              options={[
+                { value: 'no', label: 'Confirmed' },
+                { value: 'yes', label: '+ Maybes' },
+              ]}
+              value={includeMaybes ? 'yes' : 'no'}
+              onChange={(v) => setIncludeMaybes(v === 'yes')}
+            />
+          </div>
 
-            <div>
-              <div className="flex justify-between text-xs mb-1">
-                <span className="text-[var(--text-muted)]">Card / Effective rate</span>
-                <span className="font-semibold num">₨ {whatIfEffective} / USD</span>
-              </div>
-              <input
-                type="range"
-                min={Math.round(settings.rates.effective * 0.75)}
-                max={Math.round(settings.rates.effective * 1.25)}
-                step="1"
-                value={whatIfEffective}
-                onChange={(e) => setWhatIfEffective(Number(e.target.value))}
-                className="w-full accent-[var(--accent)]"
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
+            <Stat icon={<Wallet className="w-3.5 h-3.5" />} label="Money now">
+              <Amount pkr={fundsPkr} compact />
+            </Stat>
+            <Stat
+              icon={<CalendarClock className="w-3.5 h-3.5" />}
+              label="Still to pay"
+              sub={
+                <>
+                  this month <Amount pkr={next30} compact tone="muted" />
+                </>
+              }
+            >
+              <Amount pkr={tl.totalOut} compact />
+            </Stat>
+            <Stat
+              icon={<TrendingDown className="w-3.5 h-3.5" />}
+              label="Lowest point"
+              sub={tl.lowest ? monthLabel(tl.lowest.key) : undefined}
+            >
+              <Amount
+                pkr={tl.lowest?.balance ?? fundsPkr}
+                compact
+                tone={(tl.lowest?.balance ?? 0) < 0 ? 'negative' : 'positive'}
               />
-            </div>
+            </Stat>
+            <Stat
+              icon={<PiggyBank className="w-3.5 h-3.5" />}
+              label="Save to stay covered"
+              sub={
+                tl.saveNeeded === Infinity
+                  ? 'short this month already'
+                  : tl.saveNeeded
+                    ? tl.needsGoalDate
+                      ? 'for dated costs · add an undated date'
+                      : 'every month from next'
+                    : tl.needsGoalDate
+                      ? 'set “undated due by” below'
+                      : 'nothing needed'
+              }
+            >
+              {tl.saveNeeded === null && tl.needsGoalDate ? (
+                <span className="text-[var(--text-faint)]">—</span>
+              ) : tl.saveNeeded === null ? (
+                <span className="text-[var(--positive)]">₨0</span>
+              ) : tl.saveNeeded === Infinity ? (
+                <span className="text-[var(--negative)]">Now</span>
+              ) : (
+                <>
+                  <Amount pkr={tl.saveNeeded} compact />
+                  <span className="text-xs font-medium text-[var(--text-faint)]">/mo</span>
+                </>
+              )}
+            </Stat>
+          </div>
 
-            <div className="p-3.5 rounded-[12px] bg-[var(--surface-2)] border border-[var(--border)] space-y-1 text-sm">
-              <div className="flex justify-between">
-                <span className="text-[var(--text-muted)]">Recalculated plan:</span>
-                <span className="font-semibold num">
-                  <Amount pkr={whatIfPlanPkr} />
+          <div className="h-48 sm:h-56 -mx-2" aria-label="Money left and payments by month">
+            <ResponsiveContainer width="100%" height="100%">
+              <ComposedChart data={chartData} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
+                <CartesianGrid vertical={false} stroke="var(--border)" />
+                <XAxis
+                  dataKey="m"
+                  tick={{ fontSize: 11, fill: 'var(--text-faint)' }}
+                  tickLine={false}
+                  axisLine={false}
+                  interval="preserveStartEnd"
+                />
+                <YAxis
+                  tick={{ fontSize: 11, fill: 'var(--text-faint)' }}
+                  tickFormatter={fmtK}
+                  tickLine={false}
+                  axisLine={false}
+                  width={44}
+                />
+                <ReferenceLine y={0} stroke="var(--border-strong)" />
+                <Tooltip
+                  cursor={{ fill: 'var(--surface-2)' }}
+                  contentStyle={{
+                    background: 'var(--surface)',
+                    border: '1px solid var(--border)',
+                    borderRadius: 12,
+                    fontSize: 12,
+                  }}
+                  formatter={(v: number, name: string) => [
+                    `₨ ${Math.round(v).toLocaleString('en-US')}`,
+                    name,
+                  ]}
+                />
+                <Bar
+                  dataKey="out"
+                  name="Paying out"
+                  isAnimationActive={false}
+                  fill="var(--accent)"
+                  radius={[6, 6, 0, 0]}
+                  maxBarSize={28}
+                />
+                <Line
+                  dataKey="left"
+                  name="Money left"
+                  isAnimationActive={false}
+                  type="monotone"
+                  stroke="var(--positive)"
+                  strokeWidth={2.5}
+                  dot={{ r: 3, fill: 'var(--positive)' }}
+                />
+              </ComposedChart>
+            </ResponsiveContainer>
+          </div>
+
+          <div className="flex flex-wrap items-center justify-between gap-2 text-[11px] text-[var(--text-muted)]">
+            <span className="inline-flex items-center gap-3">
+              <span className="inline-flex items-center gap-1.5">
+                <i className="w-2.5 h-2.5 rounded-[3px] bg-[var(--accent)]" /> Paying out
+              </span>
+              <span className="inline-flex items-center gap-1.5">
+                <i className="w-2.5 h-0.5 rounded-full bg-[var(--positive)]" /> Money left
+              </span>
+            </span>
+            <span className="inline-flex flex-wrap items-center gap-x-4 gap-y-2">
+              {tl.undated && (
+                <label className="inline-flex items-center gap-2">
+                  <span>Undated due by</span>
+                  <input
+                    type="date"
+                    value={settings.journey.targetDate ?? ''}
+                    onChange={(e) =>
+                      state.updateSettings({
+                        journey: {
+                          ...settings.journey,
+                          targetDate: e.target.value || null,
+                        },
+                      })
+                    }
+                    aria-label="Undated costs due by"
+                    className="field !w-auto !py-1 !px-2.5 !rounded-full num text-xs"
+                  />
+                </label>
+              )}
+              <label className="inline-flex items-center gap-2">
+                <span>I can save</span>
+                <span className="field !w-28 !py-1 !px-2.5 flex items-center gap-1 !rounded-full">
+                  <span className="text-[var(--text-faint)]">₨</span>
+                  <input
+                    type="text"
+                    inputMode="decimal"
+                    value={saveText}
+                    onChange={(e) => setSaveText(e.target.value)}
+                    placeholder="0"
+                    aria-label="Saving per month (PKR)"
+                    className="w-full bg-transparent outline-none num text-xs text-[var(--text)]"
+                  />
                 </span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-[var(--text-muted)]">Recalculated gap:</span>
-                <span className="font-semibold num">
+                <span>/ month</span>
+              </label>
+            </span>
+          </div>
+        </div>
+
+        <div className="border-t border-[var(--border)] divide-y divide-[var(--border)]">
+          {buckets.map((b) => (
+            <MonthRow
+              key={b.key}
+              b={b}
+              open={firstOpen === b.key}
+              onToggle={() => setOpenKey(firstOpen === b.key ? '' : b.key)}
+            />
+          ))}
+        </div>
+        <p className="px-4 sm:px-5 py-3 border-t border-[var(--border)] text-[11px] text-[var(--text-faint)]">
+          Amounts are what's still unpaid, after tax. Overdue costs count in this month
+          {tl.undated && settings.journey.targetDate
+            ? `; undated ones by ${monthLabel(settings.journey.targetDate.slice(0, 7))}`
+            : ''}
+          .
+        </p>
+      </Card>
+
+      {/* ---------- scenarios ---------- */}
+      <Card title="Scenarios" subtitle="Same money, different plans. Nothing here changes your costs.">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+          {scenarios.map((s) => {
+            const plan = scenarioTotal(costs, settings, s.id);
+            const spare = spareFor(plan);
+            return (
+              <div
+                key={s.id}
+                className={`rounded-[14px] p-3.5 ${
+                  s.id === 'expected'
+                    ? 'bg-[var(--accent-soft)]/60 ring-1 ring-[var(--accent)]/30'
+                    : 'bg-[var(--surface-2)]/70'
+                }`}
+              >
+                <div className="flex items-baseline justify-between gap-2">
+                  <p className="text-sm font-semibold">{s.title}</p>
+                  <p className="text-[11px] text-[var(--text-faint)]">{s.hint}</p>
+                </div>
+                <p
+                  className={`mt-2 text-xl font-semibold num tracking-[-0.02em] ${spare >= 0 ? 'text-[var(--positive)]' : 'text-[var(--negative)]'}`}
+                >
                   <Amount
-                    pkr={Math.abs(whatIfGapPkr)}
-                    tone={whatIfGapPkr >= 0 ? 'positive' : 'negative'}
-                  />{' '}
-                  {whatIfGapPkr >= 0 ? 'surplus' : 'short'}
-                </span>
+                    pkr={Math.abs(spare)}
+                    prefix={spare >= 0 ? '+' : '−'}
+                    compact
+                    className="!text-inherit"
+                  />
+                  <span className="ml-1 text-xs font-medium text-[var(--text-muted)]">
+                    {spare >= 0 ? 'spare' : 'short'}
+                  </span>
+                </p>
+                <p className="text-[11px] text-[var(--text-muted)] num mt-0.5">
+                  plan <Amount pkr={plan} compact tone="muted" />
+                </p>
               </div>
-              <p className="text-xs text-[var(--text-muted)] pt-1 num">
-                Every +₨10/USD adds{' '}
-                <Amount pkr={plusTenDeltaPkr} tone="warning" /> to your confirmed
-                plan.
+            );
+          })}
+        </div>
+      </Card>
+
+      <div className="grid gap-4 lg:grid-cols-2">
+        {/* ---------- can I afford it ---------- */}
+        <Card title="Can I afford it?" subtitle="Something new that isn't in your plan.">
+          <MoneyInput value={buy} onChange={setBuy} placeholder="e.g. 900, 1.2k, 3 lakh" />
+          <div className="mt-3 grid grid-cols-2 gap-2">
+            <div className="rounded-[12px] bg-[var(--surface-2)]/70 px-3 py-2.5">
+              <p className="text-[11px] text-[var(--text-muted)]">Money left today</p>
+              <p className="text-base font-semibold num">
+                <Amount
+                  pkr={fundsPkr - buyPkr}
+                  compact
+                  tone={fundsPkr - buyPkr >= 0 ? 'default' : 'negative'}
+                />
+              </p>
+            </div>
+            <div className="rounded-[12px] bg-[var(--surface-2)]/70 px-3 py-2.5">
+              <p className="text-[11px] text-[var(--text-muted)]">Spare after the plan</p>
+              <p className="text-base font-semibold num">
+                <Amount
+                  pkr={Math.abs(planSpare - buyPkr)}
+                  prefix={planSpare - buyPkr >= 0 ? '+' : '−'}
+                  compact
+                  tone={planSpare - buyPkr >= 0 ? 'positive' : 'negative'}
+                />
               </p>
             </div>
           </div>
-        </Card>
-
-        {/* 2. Savings goal + cash-flow chart (§6.5) */}
-        <Card
-          className="col-span-12"
-          title="Savings goal &amp; cash-flow projection"
-          action={
-            <div className="w-44">
-              <DateInput value={goalDate} onChange={setGoalDate} />
-            </div>
-          }
-        >
-          <div className="space-y-4">
-            <div className="flex flex-wrap items-center justify-between gap-2 text-sm">
-              {shortfallPkr <= 0 ? (
-                <p className="text-[var(--positive)] font-medium">
-                  Your confirmed plan is already fully funded with a{' '}
-                  <Amount pkr={gapPkr} tone="positive" /> surplus!
-                </p>
-              ) : (
-                <p>
-                  Save{' '}
-                  <strong className="num text-[var(--accent)]">
-                    <Amount pkr={monthlySaveNeededPkr} />
-                  </strong>{' '}
-                  / month for <strong>{monthsRemaining} months</strong> to close the{' '}
-                  <Amount pkr={shortfallPkr} tone="negative" /> gap.
-                </p>
-              )}
-              {cashFlowData.firstNegativeMonth && (
-                <Chip variant="negative">
-                  Funds dip below cumulative costs in {cashFlowData.firstNegativeMonth}
-                </Chip>
-              )}
-            </div>
-
-            <div className="h-56 w-full" aria-label="Cash flow projection chart">
-              <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={cashFlowData.rows}>
-                  <XAxis dataKey="month" tick={{ fontSize: 11 }} />
-                  <YAxis
-                    tick={{ fontSize: 11 }}
-                    tickFormatter={(v: number) => `${Math.round(v / 1000)}k`}
-                  />
-                  <Tooltip
-                    formatter={(val: number) =>
-                      `₨ ${Math.round(val).toLocaleString('en-US')}`
-                    }
-                  />
-                  <Area
-                    type="monotone"
-                    dataKey="projectedFunds"
-                    name="Projected Funds"
-                    stroke="#059669"
-                    fill="#059669"
-                    fillOpacity={0.15}
-                  />
-                  <Area
-                    type="monotone"
-                    dataKey="cumulativeCosts"
-                    name="Cumulative Costs"
-                    stroke="#4F46E5"
-                    fill="#4F46E5"
-                    fillOpacity={0.15}
-                  />
-                </AreaChart>
-              </ResponsiveContainer>
-            </div>
-          </div>
-        </Card>
-
-        {/* 4. Quick converter (§6.5) */}
-        <Card
-          className="col-span-12"
-          title="Quick converter"
-          action={
-            <div className="flex items-center gap-2">
-              <Segmented
-                ariaLabel="Converter mode"
-                options={[
-                  { value: 'market', label: 'Market' },
-                  {
-                    value: 'effective',
-                    label: `Card ${settings.rates.effective}`,
-                  },
-                  { value: 'detailed', label: 'Detailed' },
-                ]}
-                value={convMode}
-                onChange={handleConvModeChange}
-              />
-              <Button
-                size="sm"
-                variant="secondary"
-                onClick={() => {
-                  const line = `$${convBreakdown.usd.toLocaleString()} = ₨ ${Math.round(
-                    convBreakdown.totalPkr
-                  ).toLocaleString()}`;
-                  navigator.clipboard?.writeText(line);
-                  setCopied(true);
-                  setTimeout(() => setCopied(false), 1500);
-                }}
-              >
-                {copied ? (
-                  <Check className="w-3.5 h-3.5 text-[var(--positive)]" />
-                ) : (
-                  <Copy className="w-3.5 h-3.5" />
-                )}
-                {copied ? 'Copied' : 'Copy'}
-              </Button>
-            </div>
-          }
-        >
-          <div className="grid grid-cols-1 md:grid-cols-[1fr_auto_1fr] gap-3 items-center">
-            <div className="rounded-[10px] bg-[var(--surface-2)] border border-[var(--border)] px-3.5 py-2.5 flex items-center gap-2">
-              <input
-                type="text"
-                aria-label="USD amount"
-                value={convUsdText}
-                onChange={(e) => handleConvUsdChange(e.target.value)}
-                className="bg-transparent flex-1 outline-none num text-lg font-medium"
-              />
-              <Chip>USD</Chip>
-            </div>
-
-            <span className="text-[var(--text-muted)] text-center">⇄</span>
-
-            <div className="rounded-[10px] bg-[var(--surface-2)] border border-[var(--border)] px-3.5 py-2.5 flex items-center gap-2">
-              <input
-                type="text"
-                aria-label="PKR amount"
-                value={convPkrText}
-                onChange={(e) => handleConvPkrChange(e.target.value)}
-                className="bg-transparent flex-1 outline-none num text-lg font-medium"
-              />
-              <Chip>PKR</Chip>
-            </div>
-          </div>
-
-          {convMode === 'detailed' && (
-            <div className="mt-3 flex items-center gap-2 text-xs">
-              <span className="text-[var(--text-muted)]">Tax (%):</span>
-              <input
-                type="number"
-                step="0.5"
-                min="0"
-                value={convTaxPct}
-                onChange={(e) => {
-                  const pct = parseFloat(e.target.value) || 0;
-                  setConvTaxPct(pct);
-                  const usdVal = parseAmount(convUsdText) ?? 0;
-                  const pkr = usdToPkr(
-                    usdVal,
-                    'detailed',
-                    settings.rates.market,
-                    settings.rates.effective,
-                    { kind: 'percent', value: pct }
-                  );
-                  setConvPkrText(String(Math.round(pkr)));
-                }}
-                className="w-20 rounded-[8px] bg-[var(--surface-2)] border border-[var(--border)] px-2 py-1 num outline-none"
-              />
-            </div>
+          {buyPkr > 0 && (
+            <p className="mt-2 text-xs text-[var(--text-muted)]">
+              {planSpare - buyPkr >= 0
+                ? 'Yes — the plan stays covered.'
+                : planSpare >= 0
+                  ? 'Only by eating into money the plan needs.'
+                  : 'The plan is already short; this adds to it.'}
+            </p>
           )}
+        </Card>
 
-          <p className="mt-3 text-sm text-[var(--text-muted)] num">
-            <Amount
-              pkr={convBreakdown.marketPkr}
-              usd={convBreakdown.usd}
-              displayCurrency="USD"
-              tone="muted"
-            />{' '}
-            × ₨{settings.rates.market.toFixed(2)} ={' '}
-            <Amount pkr={convBreakdown.marketPkr} displayCurrency="PKR" tone="muted" />
-            {convBreakdown.tax !== 0 && (
-              <>
-                {' '}
-                + markup/tax{' '}
-                <Amount pkr={convBreakdown.tax} displayCurrency="PKR" tone="muted" />
-              </>
-            )}{' '}
-            = <Amount pkr={convBreakdown.totalPkr} displayCurrency="PKR" /> · at card
-            rate:{' '}
-            <Amount
-              pkr={convBreakdown.usd * settings.rates.effective}
-              displayCurrency="PKR"
-              tone="muted"
-            />
+        {/* ---------- dollar moves ---------- */}
+        <Card
+          title="If the dollar moves"
+          subtitle="Both rates move together."
+          action={
+            ratePct !== 0 ? (
+              <button
+                type="button"
+                onClick={() => setRatePct(0)}
+                className="text-xs font-medium text-[var(--accent)] cursor-pointer"
+              >
+                Reset
+              </button>
+            ) : undefined
+          }
+        >
+          <div className="flex items-center justify-between text-xs mb-1.5">
+            <span className="text-[var(--text-muted)] num">
+              ₨{(settings.rates.market * (1 + ratePct / 100)).toFixed(1)} market · ₨
+              {(settings.rates.effective * (1 + ratePct / 100)).toFixed(1)} card
+            </span>
+            <span
+              className={`font-semibold num ${ratePct > 0 ? 'text-[var(--negative)]' : ratePct < 0 ? 'text-[var(--positive)]' : ''}`}
+            >
+              {ratePct > 0 ? '+' : ''}
+              {ratePct}%
+            </span>
+          </div>
+          <input
+            type="range"
+            min={-10}
+            max={20}
+            step={1}
+            value={ratePct}
+            onChange={(e) => setRatePct(Number(e.target.value))}
+            aria-label="Dollar rate change"
+            className="w-full accent-[var(--accent)]"
+          />
+          <div className="mt-3 grid grid-cols-2 gap-2">
+            <div className="rounded-[12px] bg-[var(--surface-2)]/70 px-3 py-2.5">
+              <p className="text-[11px] text-[var(--text-muted)]">Plan becomes</p>
+              <p className="text-base font-semibold num">
+                <Amount pkr={movedPlan} compact />
+              </p>
+              <p className="text-[11px] text-[var(--text-faint)] num">
+                {movedPlan - basePlan >= 0 ? '+' : '−'}
+                <Amount pkr={Math.abs(movedPlan - basePlan)} compact tone="muted" />
+              </p>
+            </div>
+            <div className="rounded-[12px] bg-[var(--surface-2)]/70 px-3 py-2.5">
+              <p className="text-[11px] text-[var(--text-muted)]">Spare after the plan</p>
+              <p className="text-base font-semibold num">
+                <Amount
+                  pkr={Math.abs(spareFor(movedPlan))}
+                  prefix={spareFor(movedPlan) >= 0 ? '+' : '−'}
+                  compact
+                  tone={spareFor(movedPlan) >= 0 ? 'positive' : 'negative'}
+                />
+              </p>
+            </div>
+          </div>
+          <p className="mt-2 text-xs text-[var(--text-muted)] num">
+            Every +₨10 per dollar adds <Amount pkr={per10} compact tone="warning" /> to your plan.
           </p>
         </Card>
       </div>

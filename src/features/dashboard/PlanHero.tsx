@@ -1,7 +1,7 @@
-import { ReactNode } from "react";
-import { ShieldCheck, TriangleAlert } from "lucide-react";
-import { Amount } from "../../components/ui";
-import type { Settings } from "../../types";
+import { ReactNode } from 'react';
+import { ShieldCheck, TriangleAlert } from 'lucide-react';
+import { Amount } from '../../components/ui';
+import type { Settings } from '../../types';
 
 export interface PlanHeroProps {
   settings: Settings;
@@ -17,30 +17,13 @@ export interface PlanHeroProps {
 }
 
 /** Big number: compact on phones so the two boxes fit side by side. */
-function Big({
-  pkr,
-  prefix,
-  className = "",
-}: {
-  pkr: number;
-  prefix?: string;
-  className?: string;
-}) {
+function Big({ pkr, prefix, className = '' }: { pkr: number; prefix?: string; className?: string }) {
   return (
     <p
       className={`text-[26px] sm:text-[38px] leading-none font-semibold tracking-[-0.04em] num ${className}`}
     >
-      <Amount
-        pkr={pkr}
-        prefix={prefix}
-        compact
-        className="!text-inherit sm:!hidden"
-      />
-      <Amount
-        pkr={pkr}
-        prefix={prefix}
-        className="!text-inherit !hidden sm:!inline-flex"
-      />
+      <Amount pkr={pkr} prefix={prefix} compact className="!text-inherit sm:!hidden" />
+      <Amount pkr={pkr} prefix={prefix} className="!text-inherit !hidden sm:!inline-flex" />
     </p>
   );
 }
@@ -68,9 +51,7 @@ function Box({
       }
     >
       <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-0.5">
-        <p className="text-[12px] font-semibold text-[var(--text-muted)] whitespace-nowrap">
-          {title}
-        </p>
+        <p className="text-[12px] font-semibold text-[var(--text-muted)] whitespace-nowrap">{title}</p>
         {aside}
       </div>
       <div className="mt-2.5">{children}</div>
@@ -78,7 +59,7 @@ function Box({
   );
 }
 
-const sign = (n: number) => (n >= 0 ? "+" : "−");
+const sign = (n: number) => (n >= 0 ? '+' : '−');
 
 function Detail({ label, children }: { label: string; children: ReactNode }) {
   return (
@@ -109,8 +90,7 @@ export function PlanHero(p: PlanHeroProps) {
       <div
         className="pointer-events-none absolute -top-24 -right-24 w-72 h-72 rounded-full opacity-[0.14] blur-3xl"
         style={{
-          background:
-            "linear-gradient(135deg, var(--hero-from), var(--hero-to))",
+          background: 'linear-gradient(135deg, var(--hero-from), var(--hero-to))',
         }}
       />
       <div className="relative">
@@ -120,25 +100,18 @@ export function PlanHero(p: PlanHeroProps) {
             <span
               className={`w-9 h-9 rounded-[12px] grid place-items-center ${
                 ok
-                  ? "bg-[var(--positive-soft)] text-[var(--positive)]"
-                  : "bg-[var(--negative-soft)] text-[var(--negative)]"
+                  ? 'bg-[var(--positive-soft)] text-[var(--positive)]'
+                  : 'bg-[var(--negative-soft)] text-[var(--negative)]'
               }`}
             >
-              {ok ? (
-                <ShieldCheck className="w-5 h-5" />
-              ) : (
-                <TriangleAlert className="w-5 h-5" />
-              )}
+              {ok ? <ShieldCheck className="w-5 h-5" /> : <TriangleAlert className="w-5 h-5" />}
             </span>
             <div>
               <p className="text-[15px] font-semibold tracking-[-0.01em]">
-                {ok
-                  ? "Your money covers the plan"
-                  : "Your money doesn’t cover the plan yet"}
+                {ok ? 'Your money covers the plan' : 'Your money doesn’t cover the plan yet'}
               </p>
               <p className="text-xs text-[var(--text-muted)]">
-                {p.includeMaybes ? "Including maybes" : "Confirmed costs only"}{" "}
-                · after tax
+                {p.includeMaybes ? 'Including maybes' : 'Confirmed costs only'} · after tax
               </p>
             </div>
           </div>
@@ -150,11 +123,11 @@ export function PlanHero(p: PlanHeroProps) {
                 onClick={() => v !== p.includeMaybes && p.onToggleMaybes()}
                 className={`h-7 px-3 rounded-full transition-colors cursor-pointer ${
                   p.includeMaybes === v
-                    ? "bg-[var(--surface)] text-[var(--text)] shadow-[var(--shadow-sm)]"
-                    : "text-[var(--text-muted)] hover:text-[var(--text)]"
+                    ? 'bg-[var(--surface)] text-[var(--text)] shadow-[var(--shadow-sm)]'
+                    : 'text-[var(--text-muted)] hover:text-[var(--text)]'
                 }`}
               >
-                {v ? "+ Maybes" : "Confirmed"}
+                {v ? '+ Maybes' : 'Confirmed'}
               </button>
             ))}
           </div>
@@ -173,11 +146,7 @@ export function PlanHero(p: PlanHeroProps) {
             <Big pkr={p.planMarketPkr} />
             <p className="mt-2 text-xs text-[var(--text-muted)] num">
               <span className="whitespace-nowrap">after tax </span>
-              <Amount
-                pkr={p.planCardPkr}
-                compact
-                className="font-semibold !text-[var(--text)]"
-              />
+              <Amount pkr={p.planCardPkr} compact className="font-semibold !text-[var(--text)]" />
             </p>
           </Box>
           <Box
@@ -187,47 +156,34 @@ export function PlanHero(p: PlanHeroProps) {
                 <span className="max-sm:hidden">Spare after everything</span>
               </>
             }
-            tint={okMarket ? "var(--positive-soft)" : "var(--negative-soft)"}
+            tint={okMarket ? 'var(--positive-soft)' : 'var(--negative-soft)'}
           >
             <Big
               pkr={Math.abs(gapMarket)}
               prefix={sign(gapMarket)}
-              className={
-                okMarket ? "text-[var(--positive)]" : "text-[var(--negative)]"
-              }
+              className={okMarket ? 'text-[var(--positive)]' : 'text-[var(--negative)]'}
             />
             <div className="mt-2 pt-2 border-t border-[var(--border)] flex flex-wrap items-baseline justify-between gap-x-2">
-              <span className="text-xs text-[var(--text-muted)] whitespace-nowrap">
-                after tax
-              </span>
+              <span className="text-xs text-[var(--text-muted)] whitespace-nowrap">after tax</span>
               <span
                 className={`text-[15px] sm:text-lg font-semibold num tracking-[-0.02em] ${
-                  ok ? "text-[var(--positive)]" : "text-[var(--negative)]"
+                  ok ? 'text-[var(--positive)]' : 'text-[var(--negative)]'
                 }`}
               >
-                <Amount
-                  pkr={Math.abs(gapCard)}
-                  prefix={sign(gapCard)}
-                  compact
-                  className="!text-inherit"
-                />
+                <Amount pkr={Math.abs(gapCard)} prefix={sign(gapCard)} compact className="!text-inherit" />
               </span>
             </div>
           </Box>
         </div>
         <p className="mt-2 text-[11px] text-[var(--text-faint)] num">
-          Market ₨{p.settings.rates.market.toFixed(1)}/$ · after tax ₨
-          {p.settings.rates.effective}/$ on dollar costs
+          Market ₨{p.settings.rates.market.toFixed(1)}/$ · after tax ₨{p.settings.rates.effective}/$ on dollar
+          costs
         </p>
 
         {/* bar */}
         <div className="mt-5">
           <div className="h-2.5 rounded-full bg-[var(--surface-3)] overflow-hidden flex">
-            <div
-              className="bg-[var(--positive)]"
-              style={{ width: `${paidW}%` }}
-              title="Paid"
-            />
+            <div className="bg-[var(--positive)]" style={{ width: `${paidW}%` }} title="Paid" />
             <div
               className="bg-[var(--accent)]"
               style={{ width: `${leftW}%` }}
@@ -239,17 +195,13 @@ export function PlanHero(p: PlanHeroProps) {
                 style={{
                   width: `${shortW}%`,
                   backgroundImage:
-                    "repeating-linear-gradient(45deg, transparent 0 4px, rgba(255,255,255,.35) 4px 8px)",
+                    'repeating-linear-gradient(45deg, transparent 0 4px, rgba(255,255,255,.35) 4px 8px)',
                 }}
                 title="Short"
               />
             )}
             {spareW > 0 && (
-              <div
-                className="bg-[var(--accent)] opacity-25"
-                style={{ width: `${spareW}%` }}
-                title="Spare"
-              />
+              <div className="bg-[var(--accent)] opacity-25" style={{ width: `${spareW}%` }} title="Spare" />
             )}
           </div>
           <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-[var(--text-muted)]">
@@ -261,13 +213,11 @@ export function PlanHero(p: PlanHeroProps) {
             </span>
             {ok ? (
               <span className="inline-flex items-center gap-1.5">
-                <i className="w-2 h-2 rounded-full bg-[var(--accent)] opacity-25" />{" "}
-                Spare
+                <i className="w-2 h-2 rounded-full bg-[var(--accent)] opacity-25" /> Spare
               </span>
             ) : (
               <span className="inline-flex items-center gap-1.5">
-                <i className="w-2 h-2 rounded-full bg-[var(--negative)]" />{" "}
-                Short
+                <i className="w-2 h-2 rounded-full bg-[var(--negative)]" /> Short
               </span>
             )}
           </div>
@@ -279,25 +229,14 @@ export function PlanHero(p: PlanHeroProps) {
             <Amount pkr={p.fundsPkr} />
           </Detail>
           <Detail label="Paid so far">
-            <Amount
-              pkr={p.paidPkr}
-              tone={p.paidPkr > 0 ? "positive" : "default"}
-            />
+            <Amount pkr={p.paidPkr} tone={p.paidPkr > 0 ? 'positive' : 'default'} />
           </Detail>
           <Detail label="Left to pay (after tax · market)">
-            <Amount pkr={leftCard} compact />{" "}
-            <span className="text-[var(--text-faint)]">·</span>{" "}
+            <Amount pkr={leftCard} compact /> <span className="text-[var(--text-faint)]">·</span>{' '}
             <Amount pkr={leftMarket} compact tone="muted" />
           </Detail>
-          <Detail
-            label={p.includeMaybes ? "Maybes (included)" : "Maybes would add"}
-          >
-            <Amount
-              pkr={p.maybeExtraCardPkr}
-              compact
-              prefix="+"
-              className="!text-[var(--maybe)]"
-            />
+          <Detail label={p.includeMaybes ? 'Maybes (included)' : 'Maybes would add'}>
+            <Amount pkr={p.maybeExtraCardPkr} compact prefix="+" className="!text-[var(--maybe)]" />
           </Detail>
           {p.usdShare > 0 && (
             <Detail label="Priced in dollars">
@@ -310,11 +249,7 @@ export function PlanHero(p: PlanHeroProps) {
             </Detail>
           )}
           <Detail label="Tax on dollar costs">
-            <Amount
-              pkr={Math.max(0, p.planCardPkr - p.planMarketPkr)}
-              compact
-              tone="muted"
-            />
+            <Amount pkr={Math.max(0, p.planCardPkr - p.planMarketPkr)} compact tone="muted" />
           </Detail>
         </div>
       </div>

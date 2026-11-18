@@ -6,9 +6,9 @@
 |---|---|
 | Project | RubenYaro — USMLE cost + task planner, static SPA on GitHub Pages |
 | Stack | Vite · React 18 · TS strict · Tailwind v4 · Zustand(persist) · HashRouter · recharts · dnd-kit · cmdk · date-fns · vitest |
-| Current checkpoint | **R4 v2.2 — simpler cost editor, Home totals, item due dates** |
-| Last updated | 2026-11-18 · by: Claude Code (S17 · R4) |
-| Build status | green (`npm run build && npm test` — 5 test files, 31 tests pass) · v2.1.1 live; v2.2.0 committed |
+| Current checkpoint | **R5 v2.3 — Planner rebuilt as a money timeline; after-tax on every cost** |
+| Last updated | 2026-11-18 · by: Claude Code (S18 · R5) |
+| Build status | green (`npm run build && npm test` — 6 test files, 33 tests pass) · v2.3.0 live |
 | Live URL | https://dawnsommer.github.io/RubenYaro/ |
 
 ## 2. Checkpoints  (`[ ]` todo · `[~]` in progress · `[x]` done)
@@ -30,12 +30,13 @@ Do them **in order**. One checkpoint ≈ one chat. Don't start the next until "D
 | CP11 | [x] | QA + polish + release | §11 | Tests green, Lighthouse ≥90/95, a11y pass, README usage, tagged v1.0.0 |
 | R2 | [x] | v2 redesign (theme, shell, inline cost editor) | D16–D19 | Build/tests green; no side drawers; Costs edit inline; multi-agent files in place |
 | R3 | [x] | Google sync · Inheritance page · Home hero · app icon | D20–D25 | Build/tests green; sync works on the live site; inheritance maths tested |
+| R5 | [x] | Planner = month-by-month timeline (chart + month list) · scenarios · afford/dollar what-ifs · after-tax on cost rows & groups | D29–D30 | Build/tests green; checked narrow + wide |
 | R4 | [x] | Simpler cost editor · Home: Total cost + Spare boxes · sub-cost due dates (schema v4) | D26–D28 | Build/tests green; checked on mobile + desktop |
 
 ## 3. Active work  (only the current checkpoint — overwrite each session)
-- **Goal:** R4 committed as `v2.2.0` (push = deploy; user decides).
+- **Goal:** R5 shipped as `v2.3.0` (deployed).
 - **Next steps (pick up here):**
-  1. Push `main` → Pages deploys. Personal data is already in the user's live app (imported S16); user still to sign in (Settings → Sync) and export a backup.
+  1. Personal data is already in the user's live app (imported S16); user still to sign in (Settings → Sync) and export a backup.
   2. Worker allow-list now includes `rubenyaro` (added by the user in Cloudflare, verified: `/oauth/start?app_id=rubenyaro…` → 302 to Google). Sign-in is direct only (D25).
   3. User plans to: export JSON + sync to Google, then **reset the app** so someone else can use it. Reset signs out of sync first (so the Google copy is never overwritten with an empty app).
   4. Installments in the user's plan add up to 12.6M vs the 11.6M estate — the page flags it; user to confirm the numbers.
@@ -71,13 +72,16 @@ Do them **in order**. One checkpoint ≈ one chat. Don't start the next until "D
 - D26 Cost editor (supersedes the editor layout of D16+): one status control (In plan / Maybe / Left out) maps to `included`+`maybe`; category/phase/priority/due are pills that open native pickers; items use a status chip that cycles Counts → Maybe → Off; the payment form only opens on "Record payment"; "Estimate" lives in More options.
 - D27 Home hero shows two boxes: **Total cost** (market, after-tax under it) and **Spare after everything** (market, with the after-tax spare in the same box). The verdict line still uses after tax.
 - D28 Schema v4: `SubCost.dueDate?`. A cost's due = earliest of its own date and its counted items' dates (`costNextDue`); `costDueParts` splits a cost by date for the planner. Migration keeps only valid yyyy-mm-dd strings.
+- D29 Planner (supersedes the §6.5 Planner layout): one timeline of what's still unpaid by month (after tax, overdue → this month, undated → target date), with scenarios and two what-ifs below. Quick converter lives only in the top-bar rate modal. No data changes.
+- D30 Cost rows and group headers always show the after-tax total under the market total. `.prettierrc` = singleQuote, printWidth 110, trailingComma es5.
 
 ## 5. Session log (keep last 3; compress older into §6 as one line; sign with agent name)
+- **S18 · 2026-11-18 · Claude Code — R5** — Planner rebuilt: `features/planner/timeline.ts` (pure, tested) → month buckets of unpaid after-tax amounts, money-left line, lowest point, monthly saving needed, undated bucket placed at the target date (editable inline). Scenarios as 3 tiles, "Can I afford it?" and "If the dollar moves" (one % slider). Old Quick converter removed (lives in the top-bar rate modal). Cost rows + group headers always show after tax. Added `.prettierrc` (single quotes) — earlier ad-hoc prettier runs had switched files to double quotes. v2.3.0.
 - **S17 · 2026-11-18 · Claude Code — R4** — Cost editor simplified (name+amount, In plan/Maybe/Left out, chip row for due/category/phase/priority, items with status chip + own due date, payment form behind a button, estimate moved to More). Home hero = Total cost + Spare after everything (after tax inside). Sub-cost `dueDate` (schema v4) feeds next-due, status, month grouping, planner cash flow. Compact `MoneyInput` = one currency chip. v2.2.0.
 - **S16 · 2026-11-18 · Claude Code — R3** — (v2.1.1: direct sign-in only) Google sync (shared Worker / borrowed Thunder sign-in), Inheritance planner page, Home hero rebuilt (after-tax + market side by side), Lifestyle category, app icon + PNGs, rate-pill convert icon + quick convert, shared-origin cache fix, v2.1.0.
-- **S15 · 2026-11-18 · Claude Code — R2 redesign** — Multi-agent setup (AGENTS/CLAUDE/GEMINI), new theme + TopBar/BottomNav shell, inline `CostEditor` replaces cost drawer, simplified Home + Costs, decluttered Tasks rows, Sheet → centred modal, v2.0.0.
 
 ## 6. History (one line per old session)
+- S15 · R2 redesign: multi-agent setup, new theme + shell, inline CostEditor, Sheet → centred modal, v2.0.0.
 - S14 · Versioned deploy: `version.json`, network-first HTML in `sw.js`, Update & Reload button.
 - **S13 · 2026-11-18 · Redesign** — Simplified UI & mobile UX, pinned tasks at top of Dashboard, manual task sorting + pin buttons, dual Market + `×300` after-tax rate display, top live-rate refresh button, and added `Visa Interview` (₨60k).
 - **S12 · 2026-11-18 · CP11** — Code-split bundle, README usage guide, 27 tests + strict TS, tagged `v1.0.0`.
