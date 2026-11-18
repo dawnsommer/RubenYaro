@@ -6,8 +6,8 @@
 |---|---|
 | Project | RubenYaro — USMLE cost + task planner, static SPA on GitHub Pages |
 | Stack | Vite · React 18 · TS strict · Tailwind v4 · Zustand(persist) · HashRouter · recharts · dnd-kit · cmdk · date-fns · vitest |
-| Current checkpoint | **CP2 — in progress** (CP0–CP1 done) |
-| Last updated | 2026-11-18 · by: CP1 session |
+| Current checkpoint | **CP3 — in progress** (CP0–CP2 done) |
+| Last updated | 2026-11-18 · by: CP2 session |
 | Build status | green (`npm run build && npm test`) |
 | Live URL | n/a (set after CP0 deploy) |
 
@@ -18,8 +18,8 @@ Do them **in order**. One checkpoint ≈ one chat. Don't start the next until "D
 |---|---|---|---|---|
 | CP0 | [x] | Scaffold + deploy pipeline | §2, §10 | `npm run dev/build/test` work; `deploy.yml` deploys to Pages; HashRouter with 6 empty routes |
 | CP1 | [x] | Design tokens + UI kit + AppShell | §7, §3, mockup | tokens.css light/dark; all §7.4 components; Sidebar/BottomNav/RateBar shell (static values) responsive 360–1440 |
-| CP2 | [~] | Types + store + persistence + seed | §4, §9, seed.json | `types/index.ts` = §4 (incl. `maybe`, `variants`); store CRUD for all entities; persist key `rubenyaro:v1` + migrate(); export/import JSON (+ seed-format merge import); seed loader; `.gitignore` keeps `private/` |
-| CP3 | [ ] | Currency engine + rates + Amount/MoneyInput | §5, §6.0, §7.4 | `currency.ts` all formulas + tests green; `rates.ts` primary→fallback→cache 12h→manual; RateBar live & editable; `Amount` + `MoneyInput` (parses `1.2k`, `3 lakh`, `450*3`) |
+| CP2 | [x] | Types + store + persistence + seed | §4, §9, seed.json | `types/index.ts` = §4 (incl. `maybe`, `variants`); store CRUD for all entities; persist key `rubenyaro:v1` + migrate(); export/import JSON (+ seed-format merge import); seed loader; `.gitignore` keeps `private/` |
+| CP3 | [~] | Currency engine + rates + Amount/MoneyInput | §5, §6.0, §7.4 | `currency.ts` all formulas + tests green; `rates.ts` primary→fallback→cache 12h→manual; RateBar live & editable; `Amount` + `MoneyInput` (parses `1.2k`, `3 lakh`, `450*3`) |
 | CP4 | [ ] | Accounts + ledger | §6.3, §5.4 | CRUD, deposit/withdraw/transfer (cross-currency), balances, reserved, ledger view, sparkline |
 | CP5 | [ ] | Costs (core) | §6.2, §4 selectors | CRUD, sub-costs (expand, Σ, include + Maybe toggles), variants switcher, temporary, recurring, included toggle, archive, drag reorder, views: phase/category/table |
 | CP6 | [ ] | Payments + statuses + Timeline view | §6.2 tabs 3–4, §4 | Record payment from cost/account; status auto (Paid/Partial/Due soon/Overdue); Breakdown tab; Timeline view; CSV export |
@@ -30,8 +30,8 @@ Do them **in order**. One checkpoint ≈ one chat. Don't start the next until "D
 | CP11 | [ ] | QA + polish + release | §11 | Tests green, Lighthouse ≥90/95, a11y pass, README usage, tagged v1.0.0 |
 
 ## 3. Active work  (only the current checkpoint — overwrite each session)
-- **Goal:** CP2 — Types + store + persistence + seed
-- **Next steps:** 1) Read DESIGN §4, §9, `docs/seed.json` 2) Write `src/types/index.ts` verbatim from §4 3) Write `src/store/migrations.ts`, `src/store/seed.ts`, `src/store/useStore.ts` (Zustand persist `rubenyaro:v1`, CRUD, JSON export/import + seed merge) 4) Add store/seed tests in vitest.
+- **Goal:** CP3 — Currency engine + rates + Amount/MoneyInput
+- **Next steps:** 1) Write `src/lib/currency.ts`, `src/lib/format.ts`, `src/lib/parseAmount.ts`, `src/lib/rates.ts` 2) Wire `Amount`, `MoneyInput`, `RateBar`, and `AppShell` to `src/lib/currency.ts` and `useStore` 3) Write comprehensive unit tests in `src/lib/__tests__/currency.test.ts` and `parseAmount.test.ts`.
 - **Blockers / questions for user:** none.
 
 ## 4. Decisions (append one line each; never delete)
@@ -50,11 +50,12 @@ Do them **in order**. One checkpoint ≈ one chat. Don't start the next until "D
 - D13 Sanity check at card rate 300 (for tests): confirmed plan ₨4,346,500 → surplus ₨453,500 vs ₨4.8M; maybes +₨456,000 → short ₨2,500.
 
 ## 5. Session log (keep last 3; compress older into §6 as one line)
+- **S4 · 2026-11-18 · CP2** — Added §4 TypeScript data model, Zustand persist store (`rubenyaro:v1`) with migrations, seed loader, and JSON export/import + seed merge.
 - **S3 · 2026-11-18 · CP1** — Built light/dark tokens.css, all §7.4 UI kit components, and responsive AppShell/Sidebar/BottomNav/RateBar.
 - **S2 · 2026-11-18 · CP0** — Scaffolded Vite + React 18 + TS strict + Tailwind v4, deploy.yml, HashRouter 6 routes, vitest.
-- **S1 · 2026-11-18 · Design** — Renamed to RubenYaro; real starter values in seed.json + private/my-data.json; added `maybe` + `variants` to spec.
 
 ## 6. History (one line per old session)
+- **S1 · 2026-11-18 · Design** — Renamed to RubenYaro; real starter values in seed.json + private/my-data.json; added `maybe` + `variants`.
 - **S0 · 2026-11-18 · Design** — Wrote DESIGN.md, seed.json, mockup, HANDOFF/AGENTS/GEMINI.
 
 ## 7. Known issues / tech debt
