@@ -42,6 +42,11 @@
           ] }
       ] },
     { "name": "5-month stay in the USA", "phase": "usa", "category": "living", "kind": "estimate", "money": { "amount": 1200, "currency": "USD" }, "recurrence": { "frequency": "monthly", "interval": 1, "occurrences": 5 }, "note": "$6,000 total ($1,200 × 5 months). Set start date when known." },
+    { "name": "Visa Interview", "phase": "usa", "category": "travel", "money": { "amount": 60000, "currency": "PKR" },
+      "subCosts": [
+        { "name": "Plane ticket", "money": { "amount": 50000, "currency": "PKR" } },
+        { "name": "Hotel and food", "money": { "amount": 10000, "currency": "PKR" } }
+      ] },
     { "name": "Observership", "phase": "usa", "category": "apps", "money": { "amount": 500, "currency": "USD" }, "maybe": true, "priority": "should" },
     { "name": "Research", "phase": "research", "category": "research", "money": { "amount": 80000, "currency": "PKR" },
       "subCosts": [
@@ -51,10 +56,10 @@
     { "name": "Interview room setup", "phase": "match", "category": "setup", "money": { "amount": 50000, "currency": "PKR" }, "priority": "should" }
   ],
   "tasks": [
-    { "title": "Submit ECFMG Pathways application", "phase": "ecfmg", "priority": "must", "linkedCost": "ECFMG Pathways" },
+    { "title": "Submit ECFMG Pathways application", "phase": "ecfmg", "priority": "must", "linkedCost": "ECFMG Pathways", "pinned": true },
     { "title": "Complete ECFMG Certification", "phase": "ecfmg", "priority": "must", "linkedCost": "ECFMG Certification" },
-    { "title": "Register & schedule Step 3", "phase": "step3", "priority": "must", "linkedCost": "Step 3" },
-    { "title": "Step 3 prep — Qbank", "phase": "step3", "priority": "must", "progress": { "current": 0, "total": 1700, "unit": "questions" } },
+    { "title": "Register & schedule Step 3", "phase": "step3", "priority": "must", "linkedCost": "Step 3", "pinned": true },
+    { "title": "Step 3 prep — Qbank", "phase": "step3", "priority": "must", "progress": { "current": 0, "total": 1700, "unit": "questions" }, "pinned": true },
     { "title": "Research work / publications", "phase": "research", "priority": "should", "checklist": ["Pick project", "Submit abstract", "Manuscript", "Publication"] },
     { "title": "Arrange observership", "phase": "usa", "priority": "should", "linkedCost": "Observership", "checklist": ["Shortlist sites", "Apply", "Confirm dates", "Request LoR"] },
     { "title": "Book flights", "phase": "usa", "priority": "must", "linkedCost": "Flight tickets" },

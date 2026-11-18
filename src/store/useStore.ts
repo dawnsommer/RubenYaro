@@ -545,6 +545,7 @@ export const useStore = create<RubenYaroStore>()(
           checklist: task.checklist ?? [],
           linkedCostId: task.linkedCostId,
           progress: task.progress,
+          pinned: task.pinned ?? false,
           order: task.order ?? get().tasks.length,
           createdAt: task.createdAt ?? now,
           completedAt: task.completedAt,

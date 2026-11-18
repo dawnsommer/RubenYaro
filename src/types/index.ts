@@ -105,6 +105,7 @@ export interface Task {
   checklist: { id: string; text: string; done: boolean }[];
   linkedCostId?: string;                    // e.g. "Pay Step 1 fee" ↔ cost
   progress?: { current: number; total: number; unit: string }; // e.g. 1200/3600 questions
+  pinned?: boolean;                         // pinned to top of Dashboard & Tasks
   order: number; createdAt: string; completedAt?: string;
 }
 

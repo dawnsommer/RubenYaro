@@ -26,15 +26,16 @@ describe('selectors (§4 & §5.4)', () => {
     // 5-month stay $1200 * 5 -> 1,800k
     // Research (30k + 50k sub-costs) -> 80k
     // Interview room setup -> 50k
-    // Total confirmed in seed.json = 4,004,500 PKR
-    expect(selectPlanTotalPkr(data)).toBe(4_004_500);
+    // Visa Interview (50k + 10k sub-costs) -> 60k
+    // Total confirmed in seed.json = 4,064,500 PKR
+    expect(selectPlanTotalPkr(data)).toBe(4_064_500);
 
     // Seeded maybe: Observership $500 -> 150,000 PKR
     expect(selectMaybeTotalPkr(data)).toBe(150_000);
-    expect(selectPlanWithMaybesPkr(data)).toBe(4_154_500);
+    expect(selectPlanWithMaybesPkr(data)).toBe(4_214_500);
   });
 
-  it('matches D13 sanity check when merged with synthetic test obligations & maybes', () => {
+  it('matches D13 sanity check when merged with synthetic test obligations & maybes (+ Visa Interview 60k)', () => {
     const base = buildSeededAppData();
     const merged = mergeSeedIntoAppData(base, {
       accounts: [
@@ -78,13 +79,13 @@ describe('selectors (§4 & §5.4)', () => {
       ],
     });
 
-    // D13: confirmed plan 4,346,500 -> surplus 453,500 vs 4.8M; maybes +456,000 -> short -2,500
+    // With Visa Interview (60k): confirmed plan 4,406,500 -> surplus 393,500 vs 4.8M; maybes +456,000 -> short -62,500
     expect(selectTotalFundsPkr(merged)).toBe(4_800_000);
-    expect(selectPlanTotalPkr(merged)).toBe(4_346_500);
-    expect(selectGapPkr(merged, false)).toBe(453_500);
+    expect(selectPlanTotalPkr(merged)).toBe(4_406_500);
+    expect(selectGapPkr(merged, false)).toBe(393_500);
     expect(selectMaybeTotalPkr(merged)).toBe(456_000);
-    expect(selectPlanWithMaybesPkr(merged)).toBe(4_802_500);
-    expect(selectGapPkr(merged, true)).toBe(-2_500);
+    expect(selectPlanWithMaybesPkr(merged)).toBe(4_862_500);
+    expect(selectGapPkr(merged, true)).toBe(-62_500);
   });
 
   it('handles temporary expired costs, variants, sub-costs, account balances, cross-currency transfers, and spending power', () => {

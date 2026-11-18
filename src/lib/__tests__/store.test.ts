@@ -17,8 +17,13 @@ describe('store + seed + persistence (CP2)', () => {
     expect(state.settings.defaultConversionMode).toBe('effective');
     expect(state.settings.phases.length).toBe(7);
     expect(state.settings.categories.length).toBe(8);
-    expect(state.costs.length).toBe(9);
+    expect(state.costs.length).toBe(10);
     expect(state.tasks.length).toBe(12);
+
+    // Check Visa Interview sub-costs
+    const visa = state.costs.find((c) => c.name === 'Visa Interview');
+    expect(visa).toBeDefined();
+    expect(visa?.subCosts.length).toBe(2);
 
     // Check Flight tickets variants
     const flights = state.costs.find((c) => c.name === 'Flight tickets');
@@ -103,8 +108,8 @@ describe('store + seed + persistence (CP2)', () => {
   it('exports JSON and merges seed-format JSON via importJSON', () => {
     const s = useStore.getState();
     const exported = s.exportJSON();
-    expect(exported.schemaVersion).toBe(1);
-    expect(exported.costs.length).toBe(9);
+    expect(exported.schemaVersion).toBe(2);
+    expect(exported.costs.length).toBe(10);
 
     const mergeResult = s.importJSON(
       {
@@ -131,12 +136,12 @@ describe('store + seed + persistence (CP2)', () => {
     expect(mergeResult.ok).toBe(true);
     expect(useStore.getState().accounts.length).toBe(1);
     expect(useStore.getState().accounts[0].openingBalance).toBe(4800000);
-    expect(useStore.getState().costs.length).toBe(10);
+    expect(useStore.getState().costs.length).toBe(11);
   });
 
   it('migrates partial or older persisted state cleanly', () => {
     const migrated = migrate({ costs: [{ id: 'c1', name: 'Test', money: { amount: 10, currency: 'USD' }, kind: 'fixed', categoryId: 'exam', phaseId: 'step3', priority: 'must', subCosts: [] }] }, 0);
-    expect(migrated.settings.schemaVersion).toBe(1);
+    expect(migrated.settings.schemaVersion).toBe(2);
     expect(migrated.costs[0].maybe).toBe(false);
     expect(migrated.costs[0].included).toBe(true);
   });

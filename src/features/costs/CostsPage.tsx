@@ -29,7 +29,10 @@ import {
 } from 'lucide-react';
 import { useStore } from '../../store/useStore';
 import {
+  costEffectivePkr,
+  costMarketPkr,
   costMaybeExtra,
+  costNativeUsd,
   costPaid,
   costSource,
   costStatus,
@@ -88,8 +91,11 @@ function SortableCostRow({
   };
 
   const src = costSource(cost);
-  const totalPkr = costTotal(cost, settings);
-  const maybeExtraPkr = costMaybeExtra(cost, settings);
+  const marketPkr = costMarketPkr(cost, settings);
+  const afterTaxPkr = costEffectivePkr(cost, settings);
+  const nativeUsd = costNativeUsd(cost);
+  const totalPkr = marketPkr;
+  const maybeExtraPkr = costMaybeExtra(cost, settings, 'market');
   const paidPkr = costPaid(cost, transactions, accounts, settings);
   const status = costStatus(cost, transactions, accounts, settings);
   const expired = isCostExpired(cost);
@@ -300,7 +306,7 @@ function SortableCostRow({
         </div>
 
         {/* Right: Amount + Include switch + Detail button */}
-        <div className="flex items-center gap-3 shrink-0">
+        <div className="flex items-center gap-2 sm:gap-3 shrink-0">
           <div
             onClick={() => onOpenDetail('details')}
             className={`text-right cursor-pointer ${
@@ -309,20 +315,33 @@ function SortableCostRow({
           >
             <div className="text-sm font-semibold num">
               <Amount
-                pkr={totalPkr}
+                pkr={marketPkr}
+                usd={nativeUsd ?? undefined}
                 prefix={cost.maybe ? '+' : ''}
                 tone={cost.maybe ? 'muted' : 'default'}
               />
             </div>
-            <div className="text-xs text-[var(--text-muted)] num">
-              <Amount
-                pkr={totalPkr}
-                displayCurrency={
-                  settings.displayCurrency === 'PKR' ? 'USD' : 'PKR'
-                }
-                tone="muted"
-              />
-            </div>
+            {Math.round(afterTaxPkr) !== Math.round(marketPkr) ? (
+              <div className="text-[11px] text-[var(--text-muted)] num">
+                ×{settings.rates.effective}:{' '}
+                <Amount
+                  pkr={afterTaxPkr}
+                  displayCurrency="PKR"
+                  tone="muted"
+                />
+              </div>
+            ) : (
+              <div className="text-xs text-[var(--text-muted)] num">
+                <Amount
+                  pkr={marketPkr}
+                  usd={nativeUsd ?? undefined}
+                  displayCurrency={
+                    settings.displayCurrency === 'PKR' ? 'USD' : 'PKR'
+                  }
+                  tone="muted"
+                />
+              </div>
+            )}
           </div>
 
           <Switch
@@ -547,11 +566,19 @@ export function CostsPage() {
     settings,
   ]);
 
-  const filteredConfirmedTotalPkr = useMemo(
+  const filteredConfirmedMarketPkr = useMemo(
     () =>
       filteredCosts
         .filter((c) => c.included && !c.maybe && !isCostExpired(c))
-        .reduce((sum, c) => sum + costTotal(c, settings), 0),
+        .reduce((sum, c) => sum + costMarketPkr(c, settings), 0),
+    [filteredCosts, settings]
+  );
+
+  const filteredConfirmedEffectivePkr = useMemo(
+    () =>
+      filteredCosts
+        .filter((c) => c.included && !c.maybe && !isCostExpired(c))
+        .reduce((sum, c) => sum + costEffectivePkr(c, settings), 0),
     [filteredCosts, settings]
   );
 
@@ -562,8 +589,8 @@ export function CostsPage() {
         .reduce(
           (sum, c) =>
             sum +
-            (c.maybe ? costTotal(c, settings) : 0) +
-            costMaybeExtra(c, settings),
+            (c.maybe ? costMarketPkr(c, settings) : 0) +
+            costMaybeExtra(c, settings, 'market'),
           0
         ),
     [filteredCosts, settings]
@@ -661,7 +688,10 @@ export function CostsPage() {
           <div className="flex flex-wrap items-baseline gap-3 mt-1">
             <h1 className="text-[24px] leading-[32px] font-semibold">Costs</h1>
             <span className="text-lg font-semibold num">
-              <Amount pkr={filteredConfirmedTotalPkr} showSecondary />
+              <Amount
+                pkr={filteredConfirmedMarketPkr}
+                afterTaxPkr={filteredConfirmedEffectivePkr}
+              />
             </span>
             {filteredMaybeTotalPkr > 0 && (
               <span className="text-xs text-[var(--text-muted)] num">

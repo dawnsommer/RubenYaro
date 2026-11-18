@@ -31,7 +31,11 @@ export function isCostExpired(cost: Cost, todayIso = new Date().toISOString().sl
  * `costOccurrenceTotal(cost)` in PKR:
  * `src = costSource(cost)`; `src.subCosts.length ? Σ(included && !maybe subCosts → PKR) : src.money → PKR`
  */
-export function costOccurrenceTotal(cost: Cost, settings: Settings): number {
+export function costOccurrenceTotal(
+  cost: Cost,
+  settings: Settings,
+  modeOverride?: 'market' | 'effective' | 'detailed'
+): number {
   const ctx = getConversionContext(settings);
   const src = costSource(cost);
   if (src.subCosts && src.subCosts.length > 0) {
@@ -43,20 +47,29 @@ export function costOccurrenceTotal(cost: Cost, settings: Settings): number {
           moneyToPkr(
             sc.money,
             ctx,
-            sc.conversionMode ?? cost.conversionMode,
+            modeOverride ?? sc.conversionMode ?? cost.conversionMode,
             sc.tax ?? cost.tax
           ),
         0
       );
   }
-  return moneyToPkr(src.money, ctx, cost.conversionMode, cost.tax);
+  return moneyToPkr(
+    src.money,
+    ctx,
+    modeOverride ?? cost.conversionMode,
+    cost.tax
+  );
 }
 
 /**
  * `costMaybeExtra(cost)` in PKR:
  * Σ of included sub-costs with `maybe:true` (multiplied by occurrences if recurring)
  */
-export function costMaybeExtra(cost: Cost, settings: Settings): number {
+export function costMaybeExtra(
+  cost: Cost,
+  settings: Settings,
+  modeOverride?: 'market' | 'effective' | 'detailed'
+): number {
   const ctx = getConversionContext(settings);
   const src = costSource(cost);
   if (!src.subCosts || src.subCosts.length === 0) return 0;
@@ -69,7 +82,7 @@ export function costMaybeExtra(cost: Cost, settings: Settings): number {
         moneyToPkr(
           sc.money,
           ctx,
-          sc.conversionMode ?? cost.conversionMode,
+          modeOverride ?? sc.conversionMode ?? cost.conversionMode,
           sc.tax ?? cost.tax
         ),
       0
@@ -80,9 +93,67 @@ export function costMaybeExtra(cost: Cost, settings: Settings): number {
 /**
  * `costTotal(cost)` in PKR: occurrence total × (recurrence?.occurrences ?? 1)
  */
-export function costTotal(cost: Cost, settings: Settings): number {
+export function costTotal(
+  cost: Cost,
+  settings: Settings,
+  modeOverride?: 'market' | 'effective' | 'detailed'
+): number {
   const occ = cost.recurrence?.occurrences ?? 1;
-  return costOccurrenceTotal(cost, settings) * occ;
+  return costOccurrenceTotal(cost, settings, modeOverride) * occ;
+}
+
+export function costMarketPkr(cost: Cost, settings: Settings): number {
+  return costTotal(cost, settings, 'market');
+}
+
+export function costEffectivePkr(cost: Cost, settings: Settings): number {
+  return costTotal(cost, settings, 'effective');
+}
+
+export function costNativeUsd(cost: Cost): number | null {
+  const src = costSource(cost);
+  const occ = cost.recurrence?.occurrences ?? 1;
+  if (src.subCosts && src.subCosts.length > 0) {
+    const activeSubs = src.subCosts.filter((sc) => sc.included && !sc.maybe);
+    if (activeSubs.length > 0 && activeSubs.every((sc) => sc.money.currency === 'USD')) {
+      return activeSubs.reduce((s, sc) => s + sc.money.amount, 0) * occ;
+    }
+    return null;
+  }
+  if (src.money.currency === 'USD') {
+    return src.money.amount * occ;
+  }
+  return null;
+}
+
+export function selectPlanTotalMarketPkr(
+  data: AppData,
+  includeMaybes = false,
+  todayIso = new Date().toISOString().slice(0, 10)
+): number {
+  const active = getActivePlanCosts(data.costs, todayIso);
+  let sum = 0;
+  for (const c of active) {
+    if (!c.maybe) sum += costTotal(c, data.settings, 'market');
+    else if (includeMaybes) sum += costTotal(c, data.settings, 'market');
+    if (includeMaybes) sum += costMaybeExtra(c, data.settings, 'market');
+  }
+  return sum;
+}
+
+export function selectPlanTotalEffectivePkr(
+  data: AppData,
+  includeMaybes = false,
+  todayIso = new Date().toISOString().slice(0, 10)
+): number {
+  const active = getActivePlanCosts(data.costs, todayIso);
+  let sum = 0;
+  for (const c of active) {
+    if (!c.maybe) sum += costTotal(c, data.settings, 'effective');
+    else if (includeMaybes) sum += costTotal(c, data.settings, 'effective');
+    if (includeMaybes) sum += costMaybeExtra(c, data.settings, 'effective');
+  }
+  return sum;
 }
 
 export function subCostTotalPkr(cost: Cost, sub: SubCost, settings: Settings): number {

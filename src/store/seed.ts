@@ -85,6 +85,7 @@ export interface SeedTaskInput {
   linkedCost?: string;
   linkedCostId?: string;
   progress?: { current: number; total: number; unit: string };
+  pinned?: boolean;
 }
 
 export interface SeedAccountInput {
@@ -325,6 +326,7 @@ export function mapSeedToAppData(
       checklist,
       linkedCostId,
       progress: t.progress,
+      pinned: t.pinned ?? false,
       order: idx,
       createdAt: now,
     };

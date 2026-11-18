@@ -15,6 +15,8 @@ export type AmountTone = 'default' | 'positive' | 'negative' | 'warning' | 'mute
 export interface AmountProps extends HTMLAttributes<HTMLSpanElement> {
   pkr: number;
   usd?: number;
+  /** Optional after-tax (×300 card rate) PKR amount to show in a smaller muted line */
+  afterTaxPkr?: number;
   displayCurrency?: Currency;
   showSecondary?: boolean;
   compact?: boolean;
@@ -28,6 +30,7 @@ export interface AmountProps extends HTMLAttributes<HTMLSpanElement> {
 export function Amount({
   pkr,
   usd,
+  afterTaxPkr,
   displayCurrency: displayCurrencyProp,
   showSecondary = false,
   compact = false,
@@ -50,7 +53,7 @@ export function Amount({
     usd ??
     pkrToUsd(
       pkr,
-      settings.defaultConversionMode,
+      'market',
       settings.rates.market,
       settings.rates.effective,
       settings.defaultTax
@@ -77,12 +80,15 @@ export function Amount({
     muted: 'text-[var(--text-muted)]',
   };
 
+  const showAfterTax =
+    typeof afterTaxPkr === 'number' && Math.round(afterTaxPkr) !== Math.round(pkr);
+
   return (
     <span
       title={tooltip}
       onMouseEnter={() => isPrivacy && setRevealed(true)}
       onMouseLeave={() => isPrivacy && setRevealed(false)}
-      className={`inline-flex items-baseline gap-1.5 num transition-opacity duration-150 ${
+      className={`inline-flex flex-wrap items-baseline gap-x-1.5 gap-y-0.5 num transition-opacity duration-150 ${
         isPrivacy && !revealed ? 'amt blur-[6px] select-none' : ''
       } ${toneClass[tone]} ${className}`}
       {...props}
@@ -94,6 +100,12 @@ export function Amount({
       {showSecondary && (
         <span className="text-xs font-normal text-[var(--text-muted)]">
           ≈ {formatCurrency(secondaryValue, secondaryCurrency, { compact })}
+        </span>
+      )}
+      {showAfterTax && (
+        <span className="text-[11px] font-normal text-[var(--text-muted)]">
+          (×{settings.rates.effective}:{' '}
+          {formatCurrency(afterTaxPkr, 'PKR', { compact })})
         </span>
       )}
     </span>

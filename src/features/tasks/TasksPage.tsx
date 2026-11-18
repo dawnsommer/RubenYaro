@@ -1,17 +1,40 @@
 import { useState, useMemo } from 'react';
 import { nanoid } from 'nanoid';
 import {
+  DndContext,
+  closestCenter,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from '@dnd-kit/core';
+import {
+  SortableContext,
+  useSortable,
+  verticalListSortingStrategy,
+  arrayMove,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
+import {
   Plus,
   CheckCircle2,
-  Calendar,
   Trash2,
   ChevronDown,
   ChevronRight,
+  Pin,
+  GripVertical,
+  ArrowUp,
+  ArrowDown,
 } from 'lucide-react';
 import { useStore } from '../../store/useStore';
-import { costStatus, costTotal } from '../../store/selectors';
-import { daysUntil, formatShortDate } from '../../lib/dates';
-import { KeyDate, Phase, Priority, Task, TaskStatus } from '../../types';
+import {
+  costEffectivePkr,
+  costMarketPkr,
+  costNativeUsd,
+  costStatus,
+} from '../../store/selectors';
+import { formatShortDate } from '../../lib/dates';
+import { Phase, Priority, Task, TaskStatus } from '../../types';
 import {
   Amount,
   Button,
@@ -29,7 +52,7 @@ import {
 } from '../../components/ui';
 import { CostDetailSheet } from '../costs/CostDetailSheet';
 
-type TaskViewMode = 'list' | 'board' | 'upcoming';
+type TaskViewMode = 'manual' | 'phase';
 
 export function parseQuickTaskSyntax(
   raw: string,
@@ -77,19 +100,227 @@ export function parseQuickTaskSyntax(
   };
 }
 
+interface SortableTaskRowProps {
+  task: Task;
+  index: number;
+  totalCount: number;
+  onMoveUp: () => void;
+  onMoveDown: () => void;
+  onToggleDone: (done: boolean) => void;
+  onTogglePin: () => void;
+  onEdit: () => void;
+  onOpenCost: (costId: string) => void;
+  onIncrementProgress: (delta: number) => void;
+}
+
+function SortableTaskRow({
+  task,
+  index,
+  totalCount,
+  onMoveUp,
+  onMoveDown,
+  onToggleDone,
+  onTogglePin,
+  onEdit,
+  onOpenCost,
+  onIncrementProgress,
+}: SortableTaskRowProps) {
+  const state = useStore();
+  const { costs, settings } = state;
+
+  const { attributes, listeners, setNodeRef, transform, transition } = useSortable({
+    id: task.id,
+  });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+  };
+
+  const linkedCost = task.linkedCostId
+    ? costs.find((c) => c.id === task.linkedCostId)
+    : undefined;
+  const checkDone = task.checklist.filter((c) => c.done).length;
+  const progPct = task.progress
+    ? (task.progress.current / Math.max(1, task.progress.total)) * 100
+    : 0;
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className="flex items-start justify-between gap-2.5 py-3 px-3 sm:px-4 bg-[var(--surface)] hover:bg-[var(--surface-2)]/50 transition-colors"
+    >
+      <div className="flex items-start gap-2.5 flex-1 min-w-0">
+        {/* Drag handle */}
+        <button
+          type="button"
+          {...attributes}
+          {...listeners}
+          aria-label="Drag to reorder task"
+          className="mt-0.5 text-[var(--text-muted)] cursor-grab active:cursor-grabbing shrink-0"
+        >
+          <GripVertical className="w-4 h-4" />
+        </button>
+
+        {/* Round checkbox */}
+        <div className="mt-0.5">
+          <Checkbox
+            checked={task.status === 'done'}
+            onChange={onToggleDone}
+          />
+        </div>
+
+        {/* Content */}
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 flex-wrap">
+            <button
+              type="button"
+              onClick={onEdit}
+              className={`text-sm font-medium text-left hover:underline cursor-pointer ${
+                task.status === 'done'
+                  ? 'line-through text-[var(--text-muted)]'
+                  : ''
+              }`}
+            >
+              {task.title}
+            </button>
+
+            {task.pinned && (
+              <Chip variant="accent">Pinned</Chip>
+            )}
+
+            {task.dueDate && (
+              <Chip>{formatShortDate(task.dueDate)}</Chip>
+            )}
+
+            {task.checklist.length > 0 && (
+              <Chip>
+                ☑ {checkDone}/{task.checklist.length}
+              </Chip>
+            )}
+
+            {linkedCost && (
+              <button
+                type="button"
+                onClick={() => onOpenCost(linkedCost.id)}
+                className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium bg-[var(--accent-soft)] text-[var(--accent)] cursor-pointer"
+              >
+                <Amount
+                  pkr={costMarketPkr(linkedCost, settings)}
+                  afterTaxPkr={costEffectivePkr(linkedCost, settings)}
+                  usd={costNativeUsd(linkedCost) ?? undefined}
+                  compact
+                />
+              </button>
+            )}
+          </div>
+
+          {/* Inline checklist pills */}
+          {task.checklist.length > 0 && task.status !== 'done' && (
+            <div className="mt-2 flex flex-wrap gap-1.5">
+              {task.checklist.map((item) => (
+                <button
+                  key={item.id}
+                  type="button"
+                  onClick={() => {
+                    const updated = task.checklist.map((c) =>
+                      c.id === item.id ? { ...c, done: !c.done } : c
+                    );
+                    state.updateTask(task.id, { checklist: updated });
+                  }}
+                  className={`text-xs px-2 py-0.5 rounded-[6px] border cursor-pointer ${
+                    item.done
+                      ? 'border-[var(--positive)] text-[var(--positive)] line-through opacity-70'
+                      : 'border-[var(--border)] text-[var(--text-muted)] hover:text-[var(--text)]'
+                  }`}
+                >
+                  {item.done ? '✓ ' : '○ '}
+                  {item.text}
+                </button>
+              ))}
+            </div>
+          )}
+
+          {/* Progress tracker */}
+          {task.progress && (
+            <div className="mt-2 flex items-center gap-2 max-w-md">
+              <div className="flex-1">
+                <Progress value={progPct} />
+              </div>
+              <span className="text-xs text-[var(--text-muted)] num shrink-0">
+                {task.progress.current}/{task.progress.total}
+              </span>
+              <button
+                type="button"
+                onClick={() => onIncrementProgress(10)}
+                className="rounded-full border border-[var(--border)] px-2 py-0.5 text-[11px] font-medium hover:bg-[var(--surface-2)] cursor-pointer"
+              >
+                +10
+              </button>
+              <button
+                type="button"
+                onClick={() => onIncrementProgress(40)}
+                className="rounded-full border border-[var(--border)] px-2 py-0.5 text-[11px] font-medium hover:bg-[var(--surface-2)] cursor-pointer"
+              >
+                +40
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Right controls: Pin button + Up/Down mobile manual sort buttons */}
+      <div className="flex items-center gap-1 shrink-0">
+        <button
+          type="button"
+          onClick={onTogglePin}
+          aria-label={task.pinned ? 'Unpin task' : 'Pin task to top'}
+          title={task.pinned ? 'Unpin' : 'Pin to top & Dashboard'}
+          className={`p-1.5 rounded-[8px] cursor-pointer ${
+            task.pinned
+              ? 'bg-[var(--accent-soft)] text-[var(--accent)]'
+              : 'text-[var(--text-muted)] hover:bg-[var(--surface-2)] hover:text-[var(--text)]'
+          }`}
+        >
+          <Pin className="w-3.5 h-3.5" />
+        </button>
+
+        <button
+          type="button"
+          onClick={onMoveUp}
+          disabled={index === 0}
+          aria-label="Move task up"
+          title="Move up"
+          className="p-1 rounded-[6px] text-[var(--text-muted)] hover:bg-[var(--surface-2)] disabled:opacity-30 cursor-pointer"
+        >
+          <ArrowUp className="w-3.5 h-3.5" />
+        </button>
+
+        <button
+          type="button"
+          onClick={onMoveDown}
+          disabled={index === totalCount - 1}
+          aria-label="Move task down"
+          title="Move down"
+          className="p-1 rounded-[6px] text-[var(--text-muted)] hover:bg-[var(--surface-2)] disabled:opacity-30 cursor-pointer"
+        >
+          <ArrowDown className="w-3.5 h-3.5" />
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export function TasksPage() {
   const state = useStore();
   const { tasks, costs, settings, transactions, accounts } = state;
 
-  const [view, setView] = useState<TaskViewMode>('list');
+  const [view, setView] = useState<TaskViewMode>('manual');
   const [quickText, setQuickText] = useState('');
-  const [collapsedPhases, setCollapsedPhases] = useState<Record<string, boolean>>({});
   const [showCompleted, setShowCompleted] = useState(false);
 
-  // Toast
   const [toast, setToast] = useState<ToastMessage | null>(null);
-
-  // Linked cost payment sheet
   const [payingCostId, setPayingCostId] = useState<string | null>(null);
 
   // Edit / Add Task Sheet
@@ -101,20 +332,33 @@ export function TasksPage() {
   const [tStatus, setTStatus] = useState<TaskStatus>('todo');
   const [tDueDate, setTDueDate] = useState<string | null>(null);
   const [tLinkedCostId, setTLinkedCostId] = useState<string>('');
+  const [tPinned, setTPinned] = useState<boolean>(false);
   const [tChecklistText, setTChecklistText] = useState('');
-  const [tHasProgress, setTHasProgress] = useState(false);
-  const [tProgCurrent, setTProgCurrent] = useState(0);
-  const [tProgTotal, setTProgTotal] = useState(1700);
-  const [tProgUnit, setTProgUnit] = useState('questions');
 
-  // Key Date Sheet
-  const [keyDateOpen, setKeyDateOpen] = useState(false);
-  const [kdLabel, setKdLabel] = useState('');
-  const [kdDate, setKdDate] = useState<string | null>(null);
-  const [kdKind, setKdKind] = useState<KeyDate['kind']>('exam');
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 6 } })
+  );
 
-  const doneCount = tasks.filter((t) => t.status === 'done').length;
-  const overallPct = tasks.length > 0 ? (doneCount / tasks.length) * 100 : 0;
+  // Pending tasks ordered with pinned first or manual order
+  const pendingTasks = useMemo(() => {
+    return tasks
+      .filter((t) => t.status !== 'done')
+      .slice()
+      .sort((a, b) => {
+        if (Boolean(a.pinned) !== Boolean(b.pinned)) {
+          return a.pinned ? -1 : 1;
+        }
+        return a.order - b.order;
+      });
+  }, [tasks]);
+
+  const completedTasks = useMemo(
+    () => tasks.filter((t) => t.status === 'done'),
+    [tasks]
+  );
+
+  const overallPct =
+    tasks.length > 0 ? (completedTasks.length / tasks.length) * 100 : 0;
 
   const handleQuickAddSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -127,6 +371,7 @@ export function TasksPage() {
       priority: parsed.priority,
       status: 'todo',
       dueDate: parsed.dueDate,
+      pinned: false,
     });
     setQuickText('');
   };
@@ -140,7 +385,6 @@ export function TasksPage() {
     });
 
     if (nextDone) {
-      // Check if linkedCost is unpaid (§6.4)
       const linkedCost = task.linkedCostId
         ? costs.find((c) => c.id === task.linkedCostId)
         : undefined;
@@ -169,15 +413,27 @@ export function TasksPage() {
     }
   };
 
-  const handleIncrementProgress = (task: Task, delta: number) => {
-    if (!task.progress) return;
-    const nextCur = Math.min(
-      task.progress.total,
-      Math.max(0, task.progress.current + delta)
-    );
-    state.updateTask(task.id, {
-      progress: { ...task.progress, current: nextCur },
-    });
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    const oldIdx = pendingTasks.findIndex((t) => t.id === active.id);
+    const newIdx = pendingTasks.findIndex((t) => t.id === over.id);
+    if (oldIdx < 0 || newIdx < 0) return;
+    const reordered = arrayMove(pendingTasks, oldIdx, newIdx);
+    state.reorderTasks([
+      ...reordered.map((t) => t.id),
+      ...completedTasks.map((t) => t.id),
+    ]);
+  };
+
+  const handleMoveIndex = (idx: number, direction: -1 | 1) => {
+    const targetIdx = idx + direction;
+    if (targetIdx < 0 || targetIdx >= pendingTasks.length) return;
+    const reordered = arrayMove(pendingTasks, idx, targetIdx);
+    state.reorderTasks([
+      ...reordered.map((t) => t.id),
+      ...completedTasks.map((t) => t.id),
+    ]);
   };
 
   const openNewTaskSheet = () => {
@@ -188,11 +444,8 @@ export function TasksPage() {
     setTStatus('todo');
     setTDueDate(null);
     setTLinkedCostId('');
+    setTPinned(false);
     setTChecklistText('');
-    setTHasProgress(false);
-    setTProgCurrent(0);
-    setTProgTotal(1700);
-    setTProgUnit('questions');
     setSheetOpen(true);
   };
 
@@ -204,11 +457,8 @@ export function TasksPage() {
     setTStatus(task.status);
     setTDueDate(task.dueDate ?? null);
     setTLinkedCostId(task.linkedCostId ?? '');
+    setTPinned(Boolean(task.pinned));
     setTChecklistText(task.checklist.map((c) => c.text).join('\n'));
-    setTHasProgress(Boolean(task.progress));
-    setTProgCurrent(task.progress?.current ?? 0);
-    setTProgTotal(task.progress?.total ?? 1700);
-    setTProgUnit(task.progress?.unit ?? 'questions');
     setSheetOpen(true);
   };
 
@@ -227,14 +477,6 @@ export function TasksPage() {
         };
       });
 
-    const progress = tHasProgress
-      ? {
-          current: Math.max(0, tProgCurrent),
-          total: Math.max(1, tProgTotal),
-          unit: tProgUnit || 'items',
-        }
-      : undefined;
-
     if (editingTask) {
       state.updateTask(editingTask.id, {
         title: tTitle.trim(),
@@ -243,8 +485,8 @@ export function TasksPage() {
         status: tStatus,
         dueDate: tDueDate ?? undefined,
         linkedCostId: tLinkedCostId || undefined,
+        pinned: tPinned,
         checklist: checklistItems,
-        progress,
       });
     } else {
       state.addTask({
@@ -254,193 +496,41 @@ export function TasksPage() {
         status: tStatus,
         dueDate: tDueDate ?? undefined,
         linkedCostId: tLinkedCostId || undefined,
+        pinned: tPinned,
         checklist: checklistItems,
-        progress,
       });
     }
     setSheetOpen(false);
   };
 
-  const renderTaskRow = (task: Task) => {
-    const linkedCost = task.linkedCostId
-      ? costs.find((c) => c.id === task.linkedCostId)
-      : undefined;
-    const checkDone = task.checklist.filter((c) => c.done).length;
-    const progPct = task.progress
-      ? (task.progress.current / Math.max(1, task.progress.total)) * 100
-      : 0;
-    const dueDays = task.dueDate ? daysUntil(task.dueDate) : null;
-
-    return (
-      <div
-        key={task.id}
-        className="flex items-start justify-between gap-3 py-3 px-4 hover:bg-[var(--surface-2)]/50 transition-colors"
-      >
-        <div className="flex items-start gap-3 flex-1 min-w-0">
-          <div className="mt-0.5">
-            <Checkbox
-              checked={task.status === 'done'}
-              onChange={(done) => handleToggleTaskDone(task, done)}
-            />
-          </div>
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 flex-wrap">
-              <button
-                type="button"
-                onClick={() => openEditTaskSheet(task)}
-                className={`text-sm font-medium text-left hover:underline cursor-pointer ${
-                  task.status === 'done'
-                    ? 'line-through text-[var(--text-muted)]'
-                    : ''
-                }`}
-              >
-                {task.title}
-              </button>
-              <span
-                className={`w-2 h-2 rounded-full ${
-                  task.priority === 'must'
-                    ? 'bg-[var(--negative)]'
-                    : task.priority === 'should'
-                      ? 'bg-[var(--warning)]'
-                      : 'bg-[var(--text-muted)]'
-                }`}
-                title={`Priority: ${task.priority}`}
-              />
-              {task.dueDate && (
-                <Chip
-                  variant={
-                    dueDays !== null && dueDays < 0
-                      ? 'negative'
-                      : dueDays !== null && dueDays <= 7
-                        ? 'warning'
-                        : 'default'
-                  }
-                >
-                  {dueDays !== null && dueDays < 0
-                    ? `Overdue (${formatShortDate(task.dueDate)})`
-                    : formatShortDate(task.dueDate)}
-                </Chip>
-              )}
-              {task.checklist.length > 0 && (
-                <Chip>
-                  ☑ {checkDone}/{task.checklist.length}
-                </Chip>
-              )}
-              {linkedCost && (
-                <button
-                  type="button"
-                  onClick={() => setPayingCostId(linkedCost.id)}
-                  className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium border border-[var(--accent)] text-[var(--accent)] cursor-pointer"
-                >
-                  <Amount
-                    pkr={costTotal(linkedCost, settings)}
-                    compact
-                    tone="default"
-                  />{' '}
-                  →
-                </button>
-              )}
-            </div>
-
-            {/* Checklist items inline toggle */}
-            {task.checklist.length > 0 && task.status !== 'done' && (
-              <div className="mt-2 flex flex-wrap gap-2">
-                {task.checklist.map((item) => (
-                  <button
-                    key={item.id}
-                    type="button"
-                    onClick={() => {
-                      const updated = task.checklist.map((c) =>
-                        c.id === item.id ? { ...c, done: !c.done } : c
-                      );
-                      state.updateTask(task.id, { checklist: updated });
-                    }}
-                    className={`text-xs px-2 py-0.5 rounded-[6px] border cursor-pointer ${
-                      item.done
-                        ? 'border-[var(--positive)] text-[var(--positive)] line-through opacity-70'
-                        : 'border-[var(--border)] text-[var(--text-muted)] hover:text-[var(--text)]'
-                    }`}
-                  >
-                    {item.done ? '✓ ' : '○ '}
-                    {item.text}
-                  </button>
-                ))}
-              </div>
-            )}
-
-            {/* Progress tracker bar + +10 / +40 buttons (§6.4) */}
-            {task.progress && (
-              <div className="mt-2 flex items-center gap-2.5 max-w-md">
-                <div className="flex-1">
-                  <Progress value={progPct} />
-                </div>
-                <span className="text-xs text-[var(--text-muted)] num shrink-0">
-                  {task.progress.current.toLocaleString()} /{' '}
-                  {task.progress.total.toLocaleString()} {task.progress.unit}
-                </span>
-                <button
-                  type="button"
-                  onClick={() => handleIncrementProgress(task, 10)}
-                  className="rounded-full border border-[var(--border)] px-2 py-0.5 text-[11px] font-medium hover:bg-[var(--surface-2)] cursor-pointer"
-                >
-                  +10
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleIncrementProgress(task, 40)}
-                  className="rounded-full border border-[var(--border)] px-2 py-0.5 text-[11px] font-medium hover:bg-[var(--surface-2)] cursor-pointer"
-                >
-                  +40
-                </button>
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
-    );
-  };
-
-  const upcomingBuckets = useMemo(() => {
-    const todayIso = new Date().toISOString().slice(0, 10);
-    const active = tasks.filter((t) => t.status !== 'done');
-    return {
-      Overdue: active.filter((t) => t.dueDate && t.dueDate < todayIso),
-      Today: active.filter((t) => t.dueDate === todayIso),
-      'This week': active.filter((t) => {
-        if (!t.dueDate || t.dueDate <= todayIso) return false;
-        return daysUntil(t.dueDate, todayIso) <= 7;
-      }),
-      Later: active.filter((t) => {
-        if (!t.dueDate) return false;
-        return daysUntil(t.dueDate, todayIso) > 7;
-      }),
-      'No date': active.filter((t) => !t.dueDate),
-    };
-  }, [tasks]);
-
   const payingCost = costs.find((c) => c.id === payingCostId) ?? null;
 
   return (
-    <div className="space-y-5">
-      {/* Header (§6.4) */}
+    <div className="space-y-4">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <p className="label-micro">Checklist &amp; Milestones</p>
+          <p className="label-micro">To-Do &amp; Milestones</p>
           <div className="flex items-center gap-3 mt-1">
-            <h1 className="text-[24px] leading-[32px] font-semibold">Tasks</h1>
+            <h1 className="text-2xl font-semibold">Tasks</h1>
             <div className="flex items-center gap-2 text-xs text-[var(--text-muted)] num">
-              <Progress value={overallPct} variant="ring" size={26} />
+              <Progress value={overallPct} variant="ring" size={24} />
               <span>
-                {doneCount} of {tasks.length} done
+                {completedTasks.length} / {tasks.length} done
               </span>
             </div>
           </div>
         </div>
 
         <div className="flex items-center gap-2">
-          <Button variant="secondary" size="sm" onClick={() => setKeyDateOpen(true)}>
-            <Calendar className="w-3.5 h-3.5" />+ Key date
-          </Button>
+          <Segmented
+            ariaLabel="Task view mode"
+            options={[
+              { value: 'manual', label: 'Manual sort' },
+              { value: 'phase', label: 'By phase' },
+            ]}
+            value={view}
+            onChange={setView}
+          />
           <Button onClick={openNewTaskSheet}>
             <Plus className="w-4 h-4" />
             Add task
@@ -448,236 +538,164 @@ export function TasksPage() {
         </div>
       </div>
 
-      {/* Countdowns strip */}
-      {(settings.journey.examDates.length > 0 || settings.journey.targetDate) && (
-        <div className="flex flex-wrap items-center gap-2">
-          {settings.journey.targetDate && (
-            <Chip variant="accent" className="text-xs py-1 px-3">
-              Target · {daysUntil(settings.journey.targetDate)} days
-            </Chip>
-          )}
-          {settings.journey.examDates.map((kd) => {
-            const d = daysUntil(kd.date);
+      {/* Quick add input */}
+      <form onSubmit={handleQuickAddSubmit} className="flex gap-2">
+        <input
+          type="text"
+          value={quickText}
+          onChange={(e) => setQuickText(e.target.value)}
+          placeholder="Add a task and press Enter…"
+          className="flex-1 rounded-[10px] bg-[var(--surface)] border border-[var(--border)] px-3.5 py-2 text-sm outline-none focus:border-[var(--accent)]"
+        />
+        <Button type="submit" variant="secondary">
+          Add
+        </Button>
+      </form>
+
+      {tasks.length === 0 ? (
+        <EmptyState
+          icon={<CheckCircle2 className="w-6 h-6" />}
+          message="No tasks yet."
+          actionLabel="Load starter checklist"
+          onAction={() => state.loadStarterData()}
+        />
+      ) : view === 'manual' ? (
+        <Card
+          noPadding
+          title="To-Do List (Drag or use ↑↓ to reorder, Pin to show on front page)"
+        >
+          <DndContext
+            sensors={sensors}
+            collisionDetection={closestCenter}
+            onDragEnd={handleDragEnd}
+          >
+            <SortableContext
+              items={pendingTasks.map((t) => t.id)}
+              strategy={verticalListSortingStrategy}
+            >
+              <div className="divide-y divide-[var(--border)] border-t border-[var(--border)]">
+                {pendingTasks.map((task, idx) => (
+                  <SortableTaskRow
+                    key={task.id}
+                    task={task}
+                    index={idx}
+                    totalCount={pendingTasks.length}
+                    onMoveUp={() => handleMoveIndex(idx, -1)}
+                    onMoveDown={() => handleMoveIndex(idx, 1)}
+                    onToggleDone={(done) => handleToggleTaskDone(task, done)}
+                    onTogglePin={() =>
+                      state.updateTask(task.id, { pinned: !task.pinned })
+                    }
+                    onEdit={() => openEditTaskSheet(task)}
+                    onOpenCost={(id) => setPayingCostId(id)}
+                    onIncrementProgress={(delta) => {
+                      if (!task.progress) return;
+                      state.updateTask(task.id, {
+                        progress: {
+                          ...task.progress,
+                          current: Math.min(
+                            task.progress.total,
+                            task.progress.current + delta
+                          ),
+                        },
+                      });
+                    }}
+                  />
+                ))}
+              </div>
+            </SortableContext>
+          </DndContext>
+        </Card>
+      ) : (
+        <div className="space-y-4">
+          {settings.phases.map((phase) => {
+            const phaseTasks = pendingTasks.filter((t) => t.phaseId === phase.id);
+            if (phaseTasks.length === 0) return null;
             return (
-              <Chip
-                key={kd.id}
-                variant={d < 0 ? 'negative' : d <= 30 ? 'warning' : 'accent'}
-                className="text-xs py-1 px-3"
-              >
-                {kd.label} · {d >= 0 ? `${d} days` : `${Math.abs(d)}d ago`}
-              </Chip>
+              <Card key={phase.id} noPadding title={phase.name}>
+                <div className="divide-y divide-[var(--border)] border-t border-[var(--border)]">
+                  {phaseTasks.map((task) => {
+                    const globalIdx = pendingTasks.findIndex((p) => p.id === task.id);
+                    return (
+                      <SortableTaskRow
+                        key={task.id}
+                        task={task}
+                        index={globalIdx}
+                        totalCount={pendingTasks.length}
+                        onMoveUp={() => handleMoveIndex(globalIdx, -1)}
+                        onMoveDown={() => handleMoveIndex(globalIdx, 1)}
+                        onToggleDone={(done) => handleToggleTaskDone(task, done)}
+                        onTogglePin={() =>
+                          state.updateTask(task.id, { pinned: !task.pinned })
+                        }
+                        onEdit={() => openEditTaskSheet(task)}
+                        onOpenCost={(id) => setPayingCostId(id)}
+                        onIncrementProgress={(delta) => {
+                          if (!task.progress) return;
+                          state.updateTask(task.id, {
+                            progress: {
+                              ...task.progress,
+                              current: Math.min(
+                                task.progress.total,
+                                task.progress.current + delta
+                              ),
+                            },
+                          });
+                        }}
+                      />
+                    );
+                  })}
+                </div>
+              </Card>
             );
           })}
         </div>
       )}
 
-      {/* Inline quick-add input + view switch (§6.4) */}
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <form onSubmit={handleQuickAddSubmit} className="flex-1 min-w-[260px]">
-          <input
-            type="text"
-            value={quickText}
-            onChange={(e) => setQuickText(e.target.value)}
-            placeholder="Quick add task… e.g. Book Step 3 date #step3 !must @2026-12-10 (Enter)"
-            className="w-full rounded-[10px] bg-[var(--surface)] border border-[var(--border)] px-3.5 py-2 text-sm outline-none focus:border-[var(--accent)]"
-          />
-        </form>
-
-        <Segmented
-          ariaLabel="Tasks view switch"
-          options={[
-            { value: 'list', label: 'List by phase' },
-            { value: 'board', label: 'Board' },
-            { value: 'upcoming', label: 'Upcoming' },
-          ]}
-          value={view}
-          onChange={setView}
-        />
-      </div>
-
-      {tasks.length === 0 ? (
-        <EmptyState
-          icon={<CheckCircle2 className="w-6 h-6" />}
-          message="No tasks in your checklist yet."
-          actionLabel="Load USMLE starter checklist"
-          onAction={() => state.loadStarterData()}
-        />
-      ) : (
-        <>
-          {/* VIEW 1: LIST BY PHASE */}
-          {view === 'list' && (
-            <div className="space-y-4">
-              {settings.phases.map((phase) => {
-                const phaseTasks = tasks.filter(
-                  (t) => t.phaseId === phase.id && t.status !== 'done'
-                );
-                const allPhaseTasks = tasks.filter((t) => t.phaseId === phase.id);
-                if (allPhaseTasks.length === 0) return null;
-                const phaseDone = allPhaseTasks.filter(
-                  (t) => t.status === 'done'
-                ).length;
-                const phasePct = (phaseDone / allPhaseTasks.length) * 100;
-                const isCollapsed = Boolean(collapsedPhases[phase.id]);
-
-                return (
-                  <Card
-                    key={phase.id}
-                    noPadding
-                    title={
-                      <button
-                        type="button"
-                        onClick={() =>
-                          setCollapsedPhases((p) => ({
-                            ...p,
-                            [phase.id]: !p[phase.id],
-                          }))
-                        }
-                        className="flex items-center gap-2 cursor-pointer"
-                      >
-                        {isCollapsed ? (
-                          <ChevronRight className="w-4 h-4 text-[var(--text-muted)]" />
-                        ) : (
-                          <ChevronDown className="w-4 h-4 text-[var(--text-muted)]" />
-                        )}
-                        <span
-                          className="w-2.5 h-2.5 rounded-full"
-                          style={{ backgroundColor: phase.color }}
-                        />
-                        <span>{phase.name}</span>
-                        <span className="text-xs font-normal text-[var(--text-muted)] num">
-                          ({phaseDone}/{allPhaseTasks.length})
-                        </span>
-                      </button>
-                    }
-                    action={
-                      <div className="w-24">
-                        <Progress value={phasePct} tone="positive" />
-                      </div>
-                    }
-                  >
-                    {!isCollapsed && (
-                      <div className="divide-y divide-[var(--border)] border-t border-[var(--border)]">
-                        {phaseTasks.length === 0 ? (
-                          <p className="text-xs text-[var(--text-muted)] px-4 py-3">
-                            All tasks in this phase completed!
-                          </p>
-                        ) : (
-                          phaseTasks.map(renderTaskRow)
-                        )}
-                      </div>
-                    )}
-                  </Card>
-                );
-              })}
-
-              {/* Completed collapsible section */}
-              {doneCount > 0 && (
-                <Card
-                  noPadding
-                  title={
-                    <button
-                      type="button"
-                      onClick={() => setShowCompleted((s) => !s)}
-                      className="flex items-center gap-2 text-sm text-[var(--text-muted)] cursor-pointer"
-                    >
-                      {showCompleted ? (
-                        <ChevronDown className="w-4 h-4" />
-                      ) : (
-                        <ChevronRight className="w-4 h-4" />
-                      )}
-                      <span>Completed ({doneCount})</span>
-                    </button>
-                  }
-                >
-                  {showCompleted && (
-                    <div className="divide-y divide-[var(--border)] border-t border-[var(--border)] opacity-70">
-                      {tasks.filter((t) => t.status === 'done').map(renderTaskRow)}
-                    </div>
-                  )}
-                </Card>
+      {/* Completed section */}
+      {completedTasks.length > 0 && (
+        <Card
+          noPadding
+          title={
+            <button
+              type="button"
+              onClick={() => setShowCompleted((s) => !s)}
+              className="flex items-center gap-2 text-sm text-[var(--text-muted)] cursor-pointer"
+            >
+              {showCompleted ? (
+                <ChevronDown className="w-4 h-4" />
+              ) : (
+                <ChevronRight className="w-4 h-4" />
               )}
-            </div>
-          )}
-
-          {/* VIEW 2: BOARD (Kanban To do / Doing / Done) */}
-          {view === 'board' && (
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {(
-                [
-                  { status: 'todo', label: 'To do' },
-                  { status: 'doing', label: 'Doing' },
-                  { status: 'done', label: 'Done' },
-                ] as const
-              ).map((col) => {
-                const colTasks = tasks.filter((t) => t.status === col.status);
-                return (
-                  <Card
-                    key={col.status}
-                    title={`${col.label} (${col.status === 'done' ? doneCount : colTasks.length})`}
+              <span>Completed ({completedTasks.length})</span>
+            </button>
+          }
+        >
+          {showCompleted && (
+            <div className="divide-y divide-[var(--border)] border-t border-[var(--border)] opacity-70">
+              {completedTasks.map((t) => (
+                <div key={t.id} className="p-3 flex items-center justify-between">
+                  <Checkbox
+                    checked={true}
+                    onChange={(done) => handleToggleTaskDone(t, done)}
+                    label={t.title}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => state.deleteTask(t.id)}
+                    aria-label="Delete task"
+                    className="text-[var(--text-muted)] hover:text-[var(--negative)] cursor-pointer"
                   >
-                    <div className="space-y-2.5">
-                      {colTasks.map((t) => (
-                        <div
-                          key={t.id}
-                          className="p-3 rounded-[12px] bg-[var(--surface-2)] border border-[var(--border)] space-y-2"
-                        >
-                          <div className="flex items-start justify-between gap-2">
-                            <button
-                              type="button"
-                              onClick={() => openEditTaskSheet(t)}
-                              className="text-sm font-medium text-left hover:underline cursor-pointer"
-                            >
-                              {t.title}
-                            </button>
-                            <Chip>{t.priority}</Chip>
-                          </div>
-                          <div className="flex items-center justify-between gap-1 pt-1">
-                            {(['todo', 'doing', 'done'] as const).map((st) => (
-                              <button
-                                key={st}
-                                type="button"
-                                onClick={() => {
-                                  if (st === 'done') handleToggleTaskDone(t, true);
-                                  else state.updateTask(t.id, { status: st });
-                                }}
-                                className={`px-2 py-0.5 rounded-[6px] text-[11px] font-medium capitalize cursor-pointer ${
-                                  t.status === st
-                                    ? 'bg-[var(--accent)] text-white'
-                                    : 'text-[var(--text-muted)] hover:bg-[var(--border)]'
-                                }`}
-                              >
-                                {st}
-                              </button>
-                            ))}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </Card>
-                );
-              })}
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
+              ))}
             </div>
           )}
-
-          {/* VIEW 3: UPCOMING */}
-          {view === 'upcoming' && (
-            <div className="space-y-4">
-              {Object.entries(upcomingBuckets).map(([bucketName, list]) => {
-                if (list.length === 0) return null;
-                return (
-                  <Card key={bucketName} noPadding title={`${bucketName} (${list.length})`}>
-                    <div className="divide-y divide-[var(--border)] border-t border-[var(--border)]">
-                      {list.map(renderTaskRow)}
-                    </div>
-                  </Card>
-                );
-              })}
-            </div>
-          )}
-        </>
+        </Card>
       )}
 
-      {/* Task Add/Edit Sheet */}
+      {/* Add / Edit Task Sheet */}
       <Sheet
         open={sheetOpen}
         onClose={() => setSheetOpen(false)}
@@ -722,6 +740,15 @@ export function TasksPage() {
             />
           </div>
 
+          <label className="inline-flex items-center gap-2 text-sm font-medium cursor-pointer">
+            <input
+              type="checkbox"
+              checked={tPinned}
+              onChange={(e) => setTPinned(e.target.checked)}
+            />
+            Pin to top of Dashboard &amp; Tasks
+          </label>
+
           <div className="grid grid-cols-2 gap-3">
             <Select
               label="Phase"
@@ -731,29 +758,6 @@ export function TasksPage() {
                 value: p.id,
                 label: p.name,
               }))}
-            />
-            <Select
-              label="Status"
-              value={tStatus}
-              onChange={(v) => setTStatus(v as TaskStatus)}
-              options={[
-                { value: 'todo', label: 'To do' },
-                { value: 'doing', label: 'Doing' },
-                { value: 'done', label: 'Done' },
-              ]}
-            />
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <Select
-              label="Priority"
-              value={tPriority}
-              onChange={(v) => setTPriority(v as Priority)}
-              options={[
-                { value: 'must', label: 'Must' },
-                { value: 'should', label: 'Should' },
-                { value: 'nice', label: 'Nice' },
-              ]}
             />
             <DateInput label="Due date" value={tDueDate} onChange={setTDueDate} />
           </div>
@@ -780,111 +784,6 @@ export function TasksPage() {
               className="w-full rounded-[10px] bg-[var(--surface-2)] border border-[var(--border)] px-3 py-2 text-sm outline-none"
             />
           </div>
-
-          <div className="pt-2 border-t border-[var(--border)] space-y-2">
-            <label className="inline-flex items-center gap-2 text-xs font-medium cursor-pointer">
-              <input
-                type="checkbox"
-                checked={tHasProgress}
-                onChange={(e) => setTHasProgress(e.target.checked)}
-              />
-              Enable numeric progress tracker (e.g. Qbank questions)
-            </label>
-            {tHasProgress && (
-              <div className="grid grid-cols-3 gap-2">
-                <div>
-                  <label className="block text-xs text-[var(--text-muted)] mb-1">
-                    Current
-                  </label>
-                  <input
-                    type="number"
-                    value={tProgCurrent}
-                    onChange={(e) => setTProgCurrent(parseInt(e.target.value, 10) || 0)}
-                    className="w-full rounded-[10px] bg-[var(--surface-2)] border border-[var(--border)] px-2.5 py-1.5 text-sm num outline-none"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs text-[var(--text-muted)] mb-1">
-                    Total
-                  </label>
-                  <input
-                    type="number"
-                    value={tProgTotal}
-                    onChange={(e) => setTProgTotal(parseInt(e.target.value, 10) || 1)}
-                    className="w-full rounded-[10px] bg-[var(--surface-2)] border border-[var(--border)] px-2.5 py-1.5 text-sm num outline-none"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs text-[var(--text-muted)] mb-1">
-                    Unit
-                  </label>
-                  <input
-                    type="text"
-                    value={tProgUnit}
-                    onChange={(e) => setTProgUnit(e.target.value)}
-                    className="w-full rounded-[10px] bg-[var(--surface-2)] border border-[var(--border)] px-2.5 py-1.5 text-sm outline-none"
-                  />
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-      </Sheet>
-
-      {/* Key Date Add Sheet */}
-      <Sheet
-        open={keyDateOpen}
-        onClose={() => setKeyDateOpen(false)}
-        title="Add key countdown date"
-        footer={
-          <>
-            <Button variant="secondary" onClick={() => setKeyDateOpen(false)}>
-              Cancel
-            </Button>
-            <Button
-              onClick={() => {
-                if (!kdLabel.trim() || !kdDate) return;
-                state.addKeyDate({
-                  label: kdLabel.trim(),
-                  date: kdDate,
-                  kind: kdKind,
-                });
-                setKdLabel('');
-                setKdDate(null);
-                setKeyDateOpen(false);
-              }}
-            >
-              Add countdown
-            </Button>
-          </>
-        }
-      >
-        <div className="space-y-4">
-          <div>
-            <label className="block text-xs font-medium text-[var(--text-muted)] mb-1">
-              Label
-            </label>
-            <input
-              type="text"
-              value={kdLabel}
-              onChange={(e) => setKdLabel(e.target.value)}
-              placeholder="e.g. Step 3 exam, ERAS opens"
-              className="w-full rounded-[10px] bg-[var(--surface-2)] border border-[var(--border)] px-3 py-2 text-sm outline-none"
-              autoFocus
-            />
-          </div>
-          <DateInput label="Date" value={kdDate} onChange={setKdDate} />
-          <Select
-            label="Kind"
-            value={kdKind}
-            onChange={(v) => setKdKind(v as KeyDate['kind'])}
-            options={[
-              { value: 'exam', label: 'Exam' },
-              { value: 'deadline', label: 'Deadline' },
-              { value: 'eligibility', label: 'Eligibility window' },
-              { value: 'other', label: 'Other' },
-            ]}
-          />
         </div>
       </Sheet>
 
