@@ -143,11 +143,16 @@ export function PlanHero(p: PlanHeroProps) {
               </span>
             }
           >
-            <Big pkr={p.planMarketPkr} />
-            <p className="mt-2 text-xs text-[var(--text-muted)] num">
-              <span className="whitespace-nowrap">after tax </span>
-              <Amount pkr={p.planCardPkr} compact className="font-semibold !text-[var(--text)]" />
+            <p className="mb-1 text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--accent)]">
+              After tax
             </p>
+            <Big pkr={p.planCardPkr} />
+            <div className="mt-2 pt-2 border-t border-[var(--border)] flex flex-wrap items-baseline justify-between gap-x-2">
+              <span className="text-xs text-[var(--text-muted)] whitespace-nowrap">before tax</span>
+              <span className="text-[15px] sm:text-lg font-semibold num tracking-[-0.02em] text-[var(--text-muted)]">
+                <Amount pkr={p.planMarketPkr} compact className="!text-inherit" />
+              </span>
+            </div>
           </Box>
           <Box
             title={
@@ -156,28 +161,36 @@ export function PlanHero(p: PlanHeroProps) {
                 <span className="max-sm:hidden">Spare after everything</span>
               </>
             }
-            tint={okMarket ? 'var(--positive-soft)' : 'var(--negative-soft)'}
+            tint={ok ? 'var(--positive-soft)' : 'var(--negative-soft)'}
           >
+            <p className="mb-1 text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--accent)]">
+              After tax
+            </p>
             <Big
-              pkr={Math.abs(gapMarket)}
-              prefix={sign(gapMarket)}
-              className={okMarket ? 'text-[var(--positive)]' : 'text-[var(--negative)]'}
+              pkr={Math.abs(gapCard)}
+              prefix={sign(gapCard)}
+              className={ok ? 'text-[var(--positive)]' : 'text-[var(--negative)]'}
             />
             <div className="mt-2 pt-2 border-t border-[var(--border)] flex flex-wrap items-baseline justify-between gap-x-2">
-              <span className="text-xs text-[var(--text-muted)] whitespace-nowrap">after tax</span>
+              <span className="text-xs text-[var(--text-muted)] whitespace-nowrap">before tax</span>
               <span
                 className={`text-[15px] sm:text-lg font-semibold num tracking-[-0.02em] ${
-                  ok ? 'text-[var(--positive)]' : 'text-[var(--negative)]'
-                }`}
+                  okMarket ? 'text-[var(--positive)]' : 'text-[var(--negative)]'
+                } opacity-75`}
               >
-                <Amount pkr={Math.abs(gapCard)} prefix={sign(gapCard)} compact className="!text-inherit" />
+                <Amount
+                  pkr={Math.abs(gapMarket)}
+                  prefix={sign(gapMarket)}
+                  compact
+                  className="!text-inherit"
+                />
               </span>
             </div>
           </Box>
         </div>
         <p className="mt-2 text-[11px] text-[var(--text-faint)] num">
-          Market ₨{p.settings.rates.market.toFixed(1)}/$ · after tax ₨{p.settings.rates.effective}/$ on dollar
-          costs
+          After tax ₨{p.settings.rates.effective}/$ · before tax (market) ₨
+          {p.settings.rates.market.toFixed(1)}/$ on dollar costs
         </p>
 
         {/* bar */}

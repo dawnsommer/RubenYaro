@@ -6,9 +6,9 @@
 |---|---|
 | Project | RubenYaro — USMLE cost + task planner, static SPA on GitHub Pages |
 | Stack | Vite · React 18 · TS strict · Tailwind v4 · Zustand(persist) · HashRouter · recharts · dnd-kit · cmdk · date-fns · vitest |
-| Current checkpoint | **R5 v2.3 — Planner rebuilt as a money timeline; after-tax on every cost** |
-| Last updated | 2026-11-18 · by: Claude Code (S18 · R5) |
-| Build status | green (`npm run build && npm test` — 6 test files, 33 tests pass) · v2.3.0 live |
+| Current checkpoint | **R5 v2.3.1 — Home boxes lead with after tax** |
+| Last updated | 2026-11-18 · by: Claude Code (S19 · R5) |
+| Build status | green (`npm run build && npm test` — 6 test files, 33 tests pass) · v2.3.0 live; v2.3.1 committed |
 | Live URL | https://dawnsommer.github.io/RubenYaro/ |
 
 ## 2. Checkpoints  (`[ ]` todo · `[~]` in progress · `[x]` done)
@@ -74,13 +74,15 @@ Do them **in order**. One checkpoint ≈ one chat. Don't start the next until "D
 - D28 Schema v4: `SubCost.dueDate?`. A cost's due = earliest of its own date and its counted items' dates (`costNextDue`); `costDueParts` splits a cost by date for the planner. Migration keeps only valid yyyy-mm-dd strings.
 - D29 Planner (supersedes the §6.5 Planner layout): one timeline of what's still unpaid by month (after tax, overdue → this month, undated → target date), with scenarios and two what-ifs below. Quick converter lives only in the top-bar rate modal. No data changes.
 - D30 Cost rows and group headers always show the after-tax total under the market total. `.prettierrc` = singleQuote, printWidth 110, trailingComma es5.
+- D31 Supersedes D27's number order: Home's Total cost and Spare boxes show **after tax** as the big number (tagged "After tax") and **before tax** (market) underneath. User wants after tax always in mind.
 
 ## 5. Session log (keep last 3; compress older into §6 as one line; sign with agent name)
+- **S19 · 2026-11-19 · Claude Code — R5 tweak** — Home hero boxes: after tax big, before tax below (D31). v2.3.1.
 - **S18 · 2026-11-18 · Claude Code — R5** — Planner rebuilt: `features/planner/timeline.ts` (pure, tested) → month buckets of unpaid after-tax amounts, money-left line, lowest point, monthly saving needed, undated bucket placed at the target date (editable inline). Scenarios as 3 tiles, "Can I afford it?" and "If the dollar moves" (one % slider). Old Quick converter removed (lives in the top-bar rate modal). Cost rows + group headers always show after tax. Added `.prettierrc` (single quotes) — earlier ad-hoc prettier runs had switched files to double quotes. v2.3.0.
-- **S17 · 2026-11-18 · Claude Code — R4** — Cost editor simplified (name+amount, In plan/Maybe/Left out, chip row for due/category/phase/priority, items with status chip + own due date, payment form behind a button, estimate moved to More). Home hero = Total cost + Spare after everything (after tax inside). Sub-cost `dueDate` (schema v4) feeds next-due, status, month grouping, planner cash flow. Compact `MoneyInput` = one currency chip. v2.2.0.
 - **S16 · 2026-11-18 · Claude Code — R3** — (v2.1.1: direct sign-in only) Google sync (shared Worker / borrowed Thunder sign-in), Inheritance planner page, Home hero rebuilt (after-tax + market side by side), Lifestyle category, app icon + PNGs, rate-pill convert icon + quick convert, shared-origin cache fix, v2.1.0.
 
 ## 6. History (one line per old session)
+- S17 · R4: simpler cost editor, Home Total/Spare boxes, sub-cost due dates (schema v4), v2.2.0.
 - S15 · R2 redesign: multi-agent setup, new theme + shell, inline CostEditor, Sheet → centred modal, v2.0.0.
 - S14 · Versioned deploy: `version.json`, network-first HTML in `sw.js`, Update & Reload button.
 - **S13 · 2026-11-18 · Redesign** — Simplified UI & mobile UX, pinned tasks at top of Dashboard, manual task sorting + pin buttons, dual Market + `×300` after-tax rate display, top live-rate refresh button, and added `Visa Interview` (₨60k).
