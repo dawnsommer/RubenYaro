@@ -1,8 +1,8 @@
 import { nanoid } from 'nanoid';
-import { AppData, SubCost } from '../types';
+import { Account, AppData, SubCost } from '../types';
 import { buildDefaultSettings } from './seed';
 
-export const CURRENT_SCHEMA_VERSION = 4;
+export const CURRENT_SCHEMA_VERSION = 5;
 
 export function isValidAppData(value: unknown): value is AppData {
   if (!value || typeof value !== 'object') return false;
@@ -117,7 +117,12 @@ export function migrate(persistedState: unknown, version: number): AppData {
       ...(state.settings ?? {}),
       schemaVersion: Math.max(version || 1, CURRENT_SCHEMA_VERSION),
     },
-    accounts: Array.isArray(state.accounts) ? state.accounts : [],
+    // v5: every account gets a role (older ones are all my own money)
+    accounts: Array.isArray(state.accounts)
+      ? state.accounts.map(
+          (a): Account => ({ ...a, role: a.role === 'lender' ? 'lender' : 'funding' })
+        )
+      : [],
     transactions: Array.isArray(state.transactions) ? state.transactions : [],
     costs,
     tasks,

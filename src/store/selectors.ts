@@ -310,33 +310,112 @@ export function accountReservedPkr(acc: Account, settings: Settings): number {
   return res * settings.rates.market;
 }
 
+/** v5: a person I borrowed from (their balance is negative while I owe them). */
+export function isLender(acc: Account): boolean {
+  return acc.role === 'lender';
+}
+
+/** My own money that counts toward the plan: funding role, included, not archived. */
+function countsAsMyMoney(acc: Account): boolean {
+  return !isLender(acc) && acc.includeInTotals && !acc.archived;
+}
+
 /**
  * `totalFunds` in PKR:
- * Σ balances of accounts with `includeInTotals && !archived`, minus `reserved`
+ * Σ balances of my funding accounts with `includeInTotals && !archived`, minus `reserved`
  */
 export function selectTotalFundsPkr(data: AppData): number {
-  return data.accounts
-    .filter((a) => a.includeInTotals && !a.archived)
-    .reduce((sum, a) => {
-      const bal = accountBalancePkr(a, data.transactions, data.settings);
-      const res = accountReservedPkr(a, data.settings);
-      return sum + (bal - res);
-    }, 0);
+  return data.accounts.filter(countsAsMyMoney).reduce((sum, a) => {
+    const bal = accountBalancePkr(a, data.transactions, data.settings);
+    const res = accountReservedPkr(a, data.settings);
+    return sum + (bal - res);
+  }, 0);
 }
 
 export function selectTotalGrossFundsPkr(data: AppData): number {
   return data.accounts
-    .filter((a) => a.includeInTotals && !a.archived)
-    .reduce(
-      (sum, a) => sum + accountBalancePkr(a, data.transactions, data.settings),
-      0
-    );
+    .filter(countsAsMyMoney)
+    .reduce((sum, a) => sum + accountBalancePkr(a, data.transactions, data.settings), 0);
 }
 
 export function selectTotalReservedPkr(data: AppData): number {
   return data.accounts
-    .filter((a) => a.includeInTotals && !a.archived)
+    .filter(countsAsMyMoney)
     .reduce((sum, a) => sum + accountReservedPkr(a, data.settings), 0);
+}
+
+// ── People I owe (lender accounts) ────────────────────────────────────────────
+export interface LenderStats {
+  borrowed: number; // everything taken from them (lender currency)
+  repaid: number; // everything paid back
+  owed: number; // borrowed − repaid (negative = I overpaid)
+}
+
+/** Totals for one lender, in the lender's currency. owed === −accountBalance. */
+export function lenderStats(acc: Account, transactions: Transaction[]): LenderStats {
+  let borrowed = Math.max(0, -acc.openingBalance);
+  let repaid = Math.max(0, acc.openingBalance);
+  for (const tx of transactions) {
+    if (tx.accountId === acc.id && (tx.type === 'payment' || tx.type === 'withdrawal' || tx.type === 'transfer')) {
+      borrowed += tx.amount;
+    } else if (tx.type === 'transfer' && tx.toAccountId === acc.id) {
+      repaid += tx.toAmount ?? tx.amount;
+    } else if (tx.type === 'deposit' && tx.accountId === acc.id) {
+      repaid += tx.amount;
+    }
+  }
+  return { borrowed, repaid, owed: borrowed - repaid };
+}
+
+export function lenderOwedPkr(acc: Account, transactions: Transaction[], settings: Settings): number {
+  const owed = Math.max(0, lenderStats(acc, transactions).owed);
+  return acc.currency === 'PKR' ? owed : owed * settings.rates.market;
+}
+
+/** Σ still owed to people (PKR). This has to come out of my money, so it lowers the spare. */
+export function selectTotalOwedPkr(data: AppData): number {
+  return data.accounts
+    .filter((a) => isLender(a) && !a.archived)
+    .reduce((sum, a) => sum + lenderOwedPkr(a, data.transactions, data.settings), 0);
+}
+
+/** My money once every debt to people is repaid. */
+export function selectNetFundsPkr(data: AppData): number {
+  return selectTotalFundsPkr(data) - selectTotalOwedPkr(data);
+}
+
+export type LenderEventKind = 'paid_cost' | 'gave_cash' | 'other' | 'repaid' | 'opening';
+export interface LenderEvent {
+  id: string;
+  kind: LenderEventKind;
+  date: string;
+  amount: number; // lender currency, always positive
+  costId?: string;
+  otherAccountId?: string; // my account the cash went to / the repayment came from
+  note?: string;
+  tx?: Transaction;
+}
+
+/** A lender's history, newest first. */
+export function lenderHistory(acc: Account, transactions: Transaction[]): LenderEvent[] {
+  const out: LenderEvent[] = [];
+  for (const tx of transactions) {
+    const base = { id: tx.id, date: tx.date, note: tx.note, tx };
+    if (tx.accountId === acc.id) {
+      if (tx.type === 'payment') out.push({ ...base, kind: 'paid_cost', amount: tx.amount, costId: tx.costId });
+      else if (tx.type === 'transfer')
+        out.push({ ...base, kind: 'gave_cash', amount: tx.amount, otherAccountId: tx.toAccountId });
+      else if (tx.type === 'withdrawal') out.push({ ...base, kind: 'other', amount: tx.amount });
+      else if (tx.type === 'deposit') out.push({ ...base, kind: 'repaid', amount: tx.amount });
+    } else if (tx.type === 'transfer' && tx.toAccountId === acc.id) {
+      out.push({ ...base, kind: 'repaid', amount: tx.toAmount ?? tx.amount, otherAccountId: tx.accountId });
+    }
+  }
+  out.sort((a, b) => (a.date !== b.date ? b.date.localeCompare(a.date) : (b.tx?.createdAt ?? '').localeCompare(a.tx?.createdAt ?? '')));
+  if (acc.openingBalance < 0) {
+    out.push({ id: `${acc.id}-opening`, kind: 'opening', date: acc.createdAt.slice(0, 10), amount: -acc.openingBalance });
+  }
+  return out;
 }
 
 /**
@@ -352,7 +431,7 @@ export function selectSpendingPowerUsd(data: AppData): {
   let pkrAvailable = 0;
 
   for (const a of data.accounts) {
-    if (!a.includeInTotals || a.archived) continue;
+    if (!countsAsMyMoney(a)) continue;
     const avail = accountBalance(a, data.transactions) - (a.reserved ?? 0);
     if (a.currency === 'USD') {
       realUsdHeld += avail;
@@ -449,7 +528,8 @@ export function selectGapPkr(
   includeMaybes = false,
   todayIso = new Date().toISOString().slice(0, 10)
 ): number {
-  const funds = selectTotalFundsPkr(data);
+  // money I owe people still has to come out of my funds
+  const funds = selectNetFundsPkr(data);
   const rem = selectRemainingPkr(data, includeMaybes, todayIso);
   return funds - rem;
 }
@@ -464,7 +544,7 @@ export function selectCoveragePercent(
     : selectPlanTotalPkr(data, todayIso);
   if (plan <= 0) return 100;
   const paid = selectTotalPaidPkr(data, includeMaybes, todayIso);
-  const funds = selectTotalFundsPkr(data);
+  const funds = selectNetFundsPkr(data);
   return ((paid + funds) / plan) * 100;
 }
 

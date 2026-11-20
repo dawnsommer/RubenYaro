@@ -359,6 +359,7 @@ export const useStore = create<RubenYaroStore>()(
           id: acc.id ?? nanoid(10),
           name: acc.name,
           kind: acc.kind,
+          role: acc.role ?? 'funding',
           currency: acc.currency,
           openingBalance: acc.openingBalance,
           color: acc.color,

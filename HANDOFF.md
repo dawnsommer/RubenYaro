@@ -6,9 +6,9 @@
 |---|---|
 | Project | RubenYaro — USMLE cost + task planner, static SPA on GitHub Pages |
 | Stack | Vite · React 18 · TS strict · Tailwind v4 · Zustand(persist) · HashRouter · recharts · dnd-kit · cmdk · date-fns · vitest |
-| Current checkpoint | **R5 v2.3.1 — Home boxes lead with after tax** |
-| Last updated | 2026-11-18 · by: Claude Code (S19 · R5) |
-| Build status | green (`npm run build && npm test` — 6 test files, 33 tests pass) · v2.3.0 live; v2.3.1 committed |
+| Current checkpoint | **R6 v2.4.0 — People I owe (loans) + Home: Left to pay / Paid so far lead** |
+| Last updated | 2026-11-21 · by: Claude Code (S20 · R6) |
+| Build status | green (`npm run build && npm test` — 7 test files, 38 tests pass) · v2.4.0 pushed (auto-deploys) |
 | Live URL | https://dawnsommer.github.io/RubenYaro/ |
 
 ## 2. Checkpoints  (`[ ]` todo · `[~]` in progress · `[x]` done)
@@ -31,17 +31,17 @@ Do them **in order**. One checkpoint ≈ one chat. Don't start the next until "D
 | R2 | [x] | v2 redesign (theme, shell, inline cost editor) | D16–D19 | Build/tests green; no side drawers; Costs edit inline; multi-agent files in place |
 | R3 | [x] | Google sync · Inheritance page · Home hero · app icon | D20–D25 | Build/tests green; sync works on the live site; inheritance maths tested |
 | R5 | [x] | Planner = month-by-month timeline (chart + month list) · scenarios · afford/dollar what-ifs · after-tax on cost rows & groups | D29–D30 | Build/tests green; checked narrow + wide |
+| R6 | [x] | Two kinds of accounts (my money / people I owe) · borrow to pay a cost · repay in parts · Home hierarchy | D32–D34 | Build/tests green; flows checked in browser, mobile + desktop |
 | R4 | [x] | Simpler cost editor · Home: Total cost + Spare boxes · sub-cost due dates (schema v4) | D26–D28 | Build/tests green; checked on mobile + desktop |
 
 ## 3. Active work  (only the current checkpoint — overwrite each session)
-- **Goal:** R5 shipped as `v2.3.0` (deployed).
+- **Goal:** R6 shipped as `v2.4.0` (pushed to main → GitHub Pages deploy).
 - **Next steps (pick up here):**
-  1. Personal data is already in the user's live app (imported S16); user still to sign in (Settings → Sync) and export a backup.
-  2. Worker allow-list now includes `rubenyaro` (added by the user in Cloudflare, verified: `/oauth/start?app_id=rubenyaro…` → 302 to Google). Sign-in is direct only (D25).
-  3. User plans to: export JSON + sync to Google, then **reset the app** so someone else can use it. Reset signs out of sync first (so the Google copy is never overwritten with an empty app).
-  4. Installments in the user's plan add up to 12.6M vs the 11.6M estate — the page flags it; user to confirm the numbers.
-  5. Optional polish (from R2): Money/Planner inline edit; task edit still uses the `Sheet` modal; a few old input classes in SettingsPage.
-- **Blockers / questions for user:** installment total mismatch (step 4).
+  1. User's existing loans are still **costs** in the `loans` category (Bhai Raheel loan payment, Another loan, Job payment). If the user moves one to *Money → People I owe* (Add person → "Already owe them"), set the matching cost to **Left out** so it isn't counted twice — the People I owe section shows a hint when both exist. Not migrated automatically on purpose (D34).
+  2. Possible polish: lender history rows could be edited inline (today: delete + re-add); a "they forgave it" action (deposit on the lender) is supported by the maths but has no button.
+  3. Carry-overs: user to sign in (Settings → Sync) and export a backup; inheritance installment total (12.6M) vs estate (11.6M) still to confirm.
+  4. Optional polish (from R2): Money/Planner inline edit; task edit still uses the `Sheet` modal.
+- **Blockers / questions for user:** installment total mismatch (step 3).
 
 ## 4. Decisions (append one line each; never delete)
 - D1 Local-first, no backend; localStorage via Zustand persist. Repo holds no personal data.
@@ -76,12 +76,17 @@ Do them **in order**. One checkpoint ≈ one chat. Don't start the next until "D
 - D30 Cost rows and group headers always show the after-tax total under the market total. `.prettierrc` = singleQuote, printWidth 110, trailingComma es5.
 - D31 Supersedes D27's number order: Home's Total cost and Spare boxes show **after tax** as the big number (tagged "After tax") and **before tax** (market) underneath. User wants after tax always in mind.
 
+- D32 Schema v5: `Account.role?: 'funding' | 'lender'` (migration sets absent → `funding`). A **lender** is a person I borrowed from; no new transaction types: they pay a cost = `payment` from the lender; they give cash = `transfer` lender → my account; other = `withdrawal` on the lender; I repay (any part) = `transfer` my account → lender (`toAmount` in the lender's currency, converted at market if needed). Owed = −balance (`lenderStats`). Lenders never count as my money (`selectTotalFundsPkr` etc. skip them) and are created with `includeInTotals:false`.
+- D33 Money owed to people lowers the spare: `selectGapPkr`, Home spare/verdict, Money "Against your plan" and the Planner start balance all use funds − owed (`selectNetFundsPkr`). So borrowing to pay a cost moves it to *Paid so far* without making the spare look bigger, and repaying lowers my money and the debt by the same amount.
+- D34 UI: Money page = My money (own accounts, ledger) + **People I owe** (card per person: You owe, Took/Repaid bar, Pay back with All/Half/Quarter chips and a live "X → Y" preview, Took more = paid a cost / gave me cash / other, inline history). Cost editor "Paid by" lists my accounts, then people ("I'll owe them"), then "+ Someone lent it to me…" (creates the person inline). Home hero (supersedes D27/D31 layout): row 1 big = **Left to pay** (after tax, before tax under) + **Paid so far**; row 2 smaller = **Total after tax** + **Spare after everything**; details small (My money, I owe people, maybes, $ share, tax). Existing loan costs are not auto-converted.
+
 ## 5. Session log (keep last 3; compress older into §6 as one line; sign with agent name)
+- **S20 · 2026-11-21 · Claude Code — R6** — Two kinds of accounts (schema v5 `role`), People I owe section (`features/accounts/PeopleIOwe.tsx`: PersonSheet, BorrowSheet, RepaySheet, LenderCard), lender selectors + `lenders.test.ts`, cost editor can be paid by a person, Home hero re-ordered. v2.4.0, unattended run (decisions D32–D34 made by the agent).
 - **S19 · 2026-11-19 · Claude Code — R5 tweak** — Home hero boxes: after tax big, before tax below (D31). v2.3.1.
 - **S18 · 2026-11-18 · Claude Code — R5** — Planner rebuilt: `features/planner/timeline.ts` (pure, tested) → month buckets of unpaid after-tax amounts, money-left line, lowest point, monthly saving needed, undated bucket placed at the target date (editable inline). Scenarios as 3 tiles, "Can I afford it?" and "If the dollar moves" (one % slider). Old Quick converter removed (lives in the top-bar rate modal). Cost rows + group headers always show after tax. Added `.prettierrc` (single quotes) — earlier ad-hoc prettier runs had switched files to double quotes. v2.3.0.
-- **S16 · 2026-11-18 · Claude Code — R3** — (v2.1.1: direct sign-in only) Google sync (shared Worker / borrowed Thunder sign-in), Inheritance planner page, Home hero rebuilt (after-tax + market side by side), Lifestyle category, app icon + PNGs, rate-pill convert icon + quick convert, shared-origin cache fix, v2.1.0.
 
 ## 6. History (one line per old session)
+- S16 · R3: Google sync, Inheritance page, Home hero (after-tax + market), app icon, v2.1.0/2.1.1.
 - S17 · R4: simpler cost editor, Home Total/Spare boxes, sub-cost due dates (schema v4), v2.2.0.
 - S15 · R2 redesign: multi-agent setup, new theme + shell, inline CostEditor, Sheet → centred modal, v2.0.0.
 - S14 · Versioned deploy: `version.json`, network-first HTML in `sw.js`, Update & Reload button.
@@ -104,7 +109,7 @@ Do them **in order**. One checkpoint ≈ one chat. Don't start the next until "D
 - —
 
 ## 8. File map (update when adding top-level modules)
-`AGENTS.md` rules (CLAUDE.md/GEMINI.md import it) · `docs/DESIGN.md` spec · `docs/seed.json` starter data · `private/my-data.json` personal data (gitignored) · `public/{sw.js,manifest.webmanifest,icon.svg}` · `src/types` · `src/lib` (currency, rates, format, parseAmount, dates, csv, version) · `src/store` (useStore, selectors, migrations, seed) · `src/components/{ui,layout}` (layout: TopBar, BottomNav, PageHeader, CommandPalette, nav.ts) · `src/features/{dashboard,costs,accounts,tasks,planner,settings}`
+`AGENTS.md` rules (CLAUDE.md/GEMINI.md import it) · `docs/DESIGN.md` spec · `docs/seed.json` starter data · `private/my-data.json` personal data (gitignored) · `public/{sw.js,manifest.webmanifest,icon.svg}` · `src/types` · `src/lib` (currency, rates, format, parseAmount, dates, csv, version) · `src/store` (useStore, selectors, migrations, seed) · `src/components/{ui,layout}` (layout: TopBar, BottomNav, PageHeader, CommandPalette, nav.ts) · `src/features/{dashboard,costs,accounts,tasks,planner,settings,inheritance}` (accounts/PeopleIOwe.tsx = lenders)
 
 ---
 ## PROTOCOL (mandatory for every chat)

@@ -41,7 +41,10 @@ import {
   selectPlanTotalMarketPkr,
   selectTotalGrossFundsPkr,
   selectTotalReservedPkr,
+  selectTotalOwedPkr,
+  isLender,
 } from '../../store/selectors';
+import { PeopleIOwe } from './PeopleIOwe';
 import { Account, Currency, TxnType } from '../../types';
 import {
   Amount,
@@ -317,21 +320,25 @@ export function AccountsPage() {
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } })
   );
 
+  // my own money only — people I owe live in their own section
+  const myAccounts = useMemo(() => accounts.filter((a) => !isLender(a)), [accounts]);
   const visibleAccounts = useMemo(
     () =>
-      accounts
+      myAccounts
         .filter((a) => (showArchived ? true : !a.archived))
         .slice()
         .sort((a, b) => a.order - b.order),
-    [accounts, showArchived]
+    [myAccounts, showArchived]
   );
 
   const activeAccount =
-    accounts.find((a) => a.id === selectedAccountId) ?? visibleAccounts[0] ?? null;
+    myAccounts.find((a) => a.id === selectedAccountId) ?? visibleAccounts[0] ?? null;
 
   const grossFundsPkr = selectTotalGrossFundsPkr(state);
   const reservedPkr = selectTotalReservedPkr(state);
   const availablePkr = selectTotalFundsPkr(state);
+  const owedPkr = selectTotalOwedPkr(state);
+  const lenderCount = accounts.filter((a) => isLender(a) && !a.archived).length;
 
   const openNewAccountSheet = () => {
     setEditingAccount(null);
@@ -395,11 +402,11 @@ export function AccountsPage() {
     mode: 'deposit' | 'withdrawal' | 'transfer',
     sourceAccount?: Account
   ) => {
-    const src = sourceAccount ?? activeAccount ?? accounts[0];
+    const src = sourceAccount ?? activeAccount ?? myAccounts[0];
     if (!src) return;
     setTxMode(mode);
     setTxAccountId(src.id);
-    const other = accounts.find((a) => a.id !== src.id && !a.archived);
+    const other = myAccounts.find((a) => a.id !== src.id && !a.archived);
     setTxToAccountId(other?.id ?? '');
     setTxAmount('');
     setTxToAmount('');
@@ -486,7 +493,7 @@ export function AccountsPage() {
           <h1 className="text-[26px] leading-[32px] font-semibold tracking-[-0.03em]">Money</h1>
         </div>
         <div className="flex items-center gap-2">
-          {accounts.length >= 2 && (
+          {myAccounts.length >= 2 && (
             <Button variant="secondary" onClick={() => openTxSheet('transfer')}>
               <ArrowLeftRight className="w-4 h-4" />
               Transfer
@@ -499,24 +506,39 @@ export function AccountsPage() {
         </div>
       </div>
 
-      {/* Top summary bar (§6.3): Total funds, Reserved, Available */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      {/* Top summary: my money · what I owe people · what's really mine */}
+      <div className={`grid grid-cols-1 gap-4 ${owedPkr > 0.5 || lenderCount > 0 ? 'sm:grid-cols-3' : 'sm:grid-cols-2'}`}>
         <Card>
-          <p className="label-micro">Total funds (gross)</p>
-          <div className="text-2xl font-semibold mt-1">
-            <Amount pkr={grossFundsPkr} showSecondary />
-          </div>
-        </Card>
-        <Card>
-          <p className="label-micro">Reserved (earmarked)</p>
-          <div className="text-2xl font-semibold mt-1">
-            <Amount pkr={reservedPkr} tone="warning" showSecondary />
-          </div>
-        </Card>
-        <Card>
-          <p className="label-micro">Available for plan</p>
+          <p className="label-micro">My money</p>
           <div className="text-2xl font-semibold mt-1">
             <Amount pkr={availablePkr} tone="positive" showSecondary />
+          </div>
+          {reservedPkr > 0 && (
+            <p className="mt-1 text-[11.5px] text-[var(--text-muted)] num">
+              <Amount pkr={grossFundsPkr} compact tone="muted" /> in accounts ·{' '}
+              <Amount pkr={reservedPkr} compact tone="warning" /> reserved
+            </p>
+          )}
+        </Card>
+        {(owedPkr > 0.5 || lenderCount > 0) && (
+          <Card>
+            <p className="label-micro">I owe people</p>
+            <div className="text-2xl font-semibold mt-1">
+              <Amount pkr={owedPkr} tone={owedPkr > 0.5 ? 'negative' : 'muted'} showSecondary />
+            </div>
+            <p className="mt-1 text-[11.5px] text-[var(--text-muted)]">
+              {lenderCount} {lenderCount === 1 ? 'person' : 'people'}
+            </p>
+          </Card>
+        )}
+        <Card>
+          <p className="label-micro">{owedPkr > 0.5 ? 'Mine after repaying' : 'Reserved (earmarked)'}</p>
+          <div className="text-2xl font-semibold mt-1">
+            {owedPkr > 0.5 ? (
+              <Amount pkr={availablePkr - owedPkr} tone={availablePkr - owedPkr >= 0 ? 'default' : 'negative'} showSecondary />
+            ) : (
+              <Amount pkr={reservedPkr} tone="warning" showSecondary />
+            )}
           </div>
         </Card>
       </div>
@@ -532,11 +554,13 @@ export function AccountsPage() {
           <div className="card p-4 sm:p-5">
             <div className="flex items-center justify-between gap-2 mb-3">
               <p className="text-[15px] font-semibold">Against your plan</p>
-              <span className="text-xs text-[var(--text-muted)]">confirmed costs</span>
+              <span className="text-xs text-[var(--text-muted)]">
+                confirmed costs{owedPkr > 0.5 ? ' · after repaying loans' : ''}
+              </span>
             </div>
             <div className="grid sm:grid-cols-2 gap-2.5">
               {rows.map((r) => {
-                const gap = availablePkr - Math.max(0, r.plan - paid);
+                const gap = availablePkr - owedPkr - Math.max(0, r.plan - paid);
                 return (
                   <div key={r.label} className="rounded-[14px] bg-[var(--surface-2)] px-4 py-3">
                     <p className="text-[11px] text-[var(--text-muted)] num">{r.label}</p>
@@ -559,8 +583,11 @@ export function AccountsPage() {
       {/* Accounts grid */}
       <div className="space-y-3">
         <div className="flex items-center justify-between">
-          <h2 className="text-[18px] leading-[26px] font-semibold">Your accounts</h2>
-          {accounts.some((a) => a.archived) && (
+          <div>
+            <h2 className="text-[18px] leading-[26px] font-semibold">My money</h2>
+            <p className="text-xs text-[var(--text-muted)]">Your own accounts — this is what everything is paid from.</p>
+          </div>
+          {myAccounts.some((a) => a.archived) && (
             <Switch
               checked={showArchived}
               onChange={setShowArchived}
@@ -606,6 +633,8 @@ export function AccountsPage() {
           </DndContext>
         )}
       </div>
+
+      <PeopleIOwe />
 
       {/* Account detail: ledger table (§6.3) */}
       {activeAccount && (
@@ -877,7 +906,7 @@ export function AccountsPage() {
             label={txMode === 'transfer' ? 'From account' : 'Account'}
             value={txAccountId}
             onChange={setTxAccountId}
-            options={accounts
+            options={myAccounts
               .filter((a) => !a.archived)
               .map((a) => ({ value: a.id, label: `${a.name} (${a.currency})` }))}
           />
@@ -887,7 +916,7 @@ export function AccountsPage() {
               label="To account"
               value={txToAccountId}
               onChange={setTxToAccountId}
-              options={accounts
+              options={myAccounts
                 .filter((a) => !a.archived && a.id !== txAccountId)
                 .map((a) => ({ value: a.id, label: `${a.name} (${a.currency})` }))}
             />

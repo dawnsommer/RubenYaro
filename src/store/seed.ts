@@ -94,6 +94,7 @@ export interface SeedAccountInput {
   id?: string;
   name: string;
   kind?: Account['kind'];
+  role?: Account['role'];
   currency?: Currency;
   openingBalance?: number;
   balance?: number;
@@ -238,6 +239,7 @@ export function mapSeedToAppData(
     id: a.id ?? nanoid(10),
     name: a.name,
     kind: a.kind ?? 'bank',
+    role: a.role === 'lender' ? 'lender' : 'funding',
     currency: a.currency ?? 'PKR',
     openingBalance: a.openingBalance ?? a.balance ?? 0,
     color: a.color ?? '#6366F1',

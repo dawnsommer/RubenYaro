@@ -16,7 +16,8 @@ import { useStore } from '../../store/useStore';
 import {
   costTotal,
   getActivePlanCosts,
-  selectTotalFundsPkr,
+  selectNetFundsPkr,
+  selectTotalOwedPkr,
   selectTotalPaidPkr,
 } from '../../store/selectors';
 import { getConversionContext, moneyToPkr } from '../../lib/currency';
@@ -149,7 +150,9 @@ export function PlannerPage() {
   const { settings, costs, transactions, accounts } = state;
   const ctx = getConversionContext(settings);
 
-  const fundsPkr = selectTotalFundsPkr(state);
+  // money once loans from people are repaid — that debt has to come out of it too
+  const fundsPkr = selectNetFundsPkr(state);
+  const owedPkr = selectTotalOwedPkr(state);
   const paidPkr = selectTotalPaidPkr(state);
 
   const [includeMaybes, setIncludeMaybes] = useState(false);
@@ -269,7 +272,15 @@ export function PlannerPage() {
           </div>
 
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
-            <Stat icon={<Wallet className="w-3.5 h-3.5" />} label="Money now">
+            <Stat icon={<Wallet className="w-3.5 h-3.5" />} label={owedPkr > 0.5 ? 'Money after loans' : 'Money now'}
+              sub={
+                owedPkr > 0.5 ? (
+                  <>
+                    owe <Amount pkr={owedPkr} compact tone="muted" />
+                  </>
+                ) : undefined
+              }
+            >
               <Amount pkr={fundsPkr} compact />
             </Stat>
             <Stat

@@ -30,8 +30,15 @@ export interface Settings {
 export interface Category { id: string; name: string; color: string; icon: string } // icon = lucide name
 export interface Phase    { id: string; name: string; order: number; color: string }  // Step 1, Step 2 CK, ...
 
+// v5: 'funding' = my own money (counts in totals) · 'lender' = a person I borrowed from / have to pay back.
+// A lender account's balance goes negative as I borrow (−balance = what I owe). Money it pays straight to a
+// cost is a `payment` (cost gets paid, I owe more); cash it hands me is a `transfer` lender → my account;
+// repaying (all at once or in parts) is a `transfer` my account → lender.
+export type AccountRole = 'funding' | 'lender';
+
 export interface Account {
   id: string; name: string;
+  role?: AccountRole;                    // v5; absent = 'funding'
   kind: 'bank' | 'cash' | 'card' | 'wallet' | 'foreign' | 'other';
   currency: Currency;
   openingBalance: number;                // in account currency

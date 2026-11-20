@@ -12,7 +12,15 @@ import {
   X,
 } from 'lucide-react';
 import { useStore } from '../../store/useStore';
-import { costMaybeExtra, costPaid, costSource, costTotal, subCostTotalPkr } from '../../store/selectors';
+import {
+  costMaybeExtra,
+  costPaid,
+  costSource,
+  costTotal,
+  isLender,
+  lenderStats,
+  subCostTotalPkr,
+} from '../../store/selectors';
 import { computeBreakdown, getConversionContext, moneyToPkr, pkrToUsd } from '../../lib/currency';
 import { parseAmount } from '../../lib/parseAmount';
 import { formatDayMonth, formatShortDate } from '../../lib/dates';
@@ -188,8 +196,13 @@ export function CostEditor({ cost, onClose }: CostEditorProps) {
   const { settings, accounts, transactions } = state;
   const ctx = getConversionContext(settings);
 
-  const activeAccounts = accounts.filter((a) => !a.archived);
-  const [payAccountId, setPayAccountId] = useState<string>(activeAccounts[0]?.id ?? '');
+  // my accounts first, then people who can pay for me (a loan) — or a new person
+  const activeAccounts = accounts
+    .filter((a) => !a.archived)
+    .sort((a, b) => Number(isLender(a)) - Number(isLender(b)) || a.order - b.order);
+  const NEW_LENDER = '__new_lender';
+  const [payAccountId, setPayAccountId] = useState<string>(activeAccounts[0]?.id ?? NEW_LENDER);
+  const [newLenderName, setNewLenderName] = useState('');
   const [payAmount, setPayAmount] = useState('');
   const [payDate, setPayDate] = useState<string | null>(todayIso());
 
@@ -321,30 +334,54 @@ export function CostEditor({ cost, onClose }: CostEditorProps) {
   };
 
   // ---- payments --------------------------------------------------------------
-  const payAccount = activeAccounts.find((a) => a.id === payAccountId) ?? activeAccounts[0];
-  const remainingInAcc = payAccount
-    ? payAccount.currency === 'PKR'
-      ? remainingPkr
-      : pkrToUsd(
-          remainingPkr,
-          cost.conversionMode ?? settings.defaultConversionMode,
-          settings.rates.market,
-          settings.rates.effective,
-          cost.tax ?? settings.defaultTax
-        )
-    : 0;
+  const payingNewLender = payAccountId === NEW_LENDER;
+  const payAccount = payingNewLender
+    ? undefined
+    : (activeAccounts.find((a) => a.id === payAccountId) ?? activeAccounts[0]);
+  const payCurrency = payAccount?.currency ?? 'PKR';
+  const payIsLoan = payingNewLender || (payAccount ? isLender(payAccount) : false);
+  const remainingInAcc = payingNewLender
+    ? remainingPkr
+    : payAccount
+      ? payAccount.currency === 'PKR'
+        ? remainingPkr
+        : pkrToUsd(
+            remainingPkr,
+            cost.conversionMode ?? settings.defaultConversionMode,
+            settings.rates.market,
+            settings.rates.effective,
+            cost.tax ?? settings.defaultTax
+          )
+      : 0;
 
   const recordPayment = () => {
-    if (!payAccount) return;
     const amt = payAmount.trim() ? (parseAmount(payAmount) ?? 0) : Math.round(remainingInAcc * 100) / 100;
     if (amt <= 0) return;
+    let from = payAccount;
+    if (payingNewLender) {
+      const name = newLenderName.trim();
+      if (!name) return;
+      from = state.addAccount({
+        name,
+        kind: 'other',
+        role: 'lender',
+        currency: 'PKR',
+        openingBalance: 0,
+        color: '#F97316',
+        icon: 'UserRound',
+        includeInTotals: false,
+      });
+      setPayAccountId(from.id);
+      setNewLenderName('');
+    }
+    if (!from) return;
     state.addTransaction({
       type: 'payment',
       date: payDate ?? todayIso(),
-      accountId: payAccount.id,
+      accountId: from.id,
       costId: cost.id,
       amount: amt,
-      note: `Payment for ${cost.name}`,
+      note: isLender(from) ? `${from.name} paid ${cost.name}` : `Payment for ${cost.name}`,
     });
     setPayAmount('');
   };
@@ -597,7 +634,7 @@ export function CostEditor({ cost, onClose }: CostEditorProps) {
       <Section
         title="Paid"
         aside={
-          activeAccounts.length > 0 && remainingPkr > 0.5 && !payOpen ? (
+          remainingPkr > 0.5 && !payOpen ? (
             <Button size="sm" variant="secondary" onClick={() => setPayOpen(true)}>
               <Plus className="w-3.5 h-3.5" /> Record payment
             </Button>
@@ -617,26 +654,37 @@ export function CostEditor({ cost, onClose }: CostEditorProps) {
             )}
           </span>
         </div>
-        {activeAccounts.length === 0 && (
-          <p className="text-xs text-[var(--text-muted)]">
-            Add an account under <strong>Money</strong> to record payments.
-          </p>
-        )}
-        {payOpen && activeAccounts.length > 0 && remainingPkr > 0.5 && (
+        {payOpen && remainingPkr > 0.5 && (
           <div className="flex flex-wrap items-end gap-2 rounded-[14px] bg-[var(--surface-2)]/60 p-3 animate-fade-in">
             <Select
-              label="From"
-              value={payAccount?.id ?? ''}
+              label="Paid by"
+              value={payingNewLender ? NEW_LENDER : (payAccount?.id ?? '')}
               onChange={setPayAccountId}
-              options={activeAccounts.map((a) => ({
-                value: a.id,
-                label: `${a.name} · ${a.currency}`,
-              }))}
+              options={[
+                ...activeAccounts.map((a) => ({
+                  value: a.id,
+                  label: isLender(a) ? `${a.name} (I'll owe them)` : `${a.name} · ${a.currency}`,
+                })),
+                { value: NEW_LENDER, label: '+ Someone lent it to me…' },
+              ]}
               className="flex-1 min-w-[150px]"
             />
+            {payingNewLender && (
+              <div className="flex-1 min-w-[140px]">
+                <label className="block text-xs font-medium text-[var(--text-muted)] mb-1.5">Who paid?</label>
+                <input
+                  type="text"
+                  value={newLenderName}
+                  onChange={(e) => setNewLenderName(e.target.value)}
+                  placeholder="e.g. Ali"
+                  className="field"
+                  autoFocus
+                />
+              </div>
+            )}
             <div className="w-[130px]">
               <label className="block text-xs font-medium text-[var(--text-muted)] mb-1.5">
-                Amount ({payAccount?.currency})
+                Amount ({payCurrency})
               </label>
               <input
                 type="text"
@@ -649,12 +697,38 @@ export function CostEditor({ cost, onClose }: CostEditorProps) {
               />
             </div>
             <DateInput label="Date" value={payDate} onChange={setPayDate} className="w-[140px]" />
-            <Button onClick={recordPayment} className="h-[38px]">
+            <Button
+              onClick={recordPayment}
+              className="h-[38px]"
+              disabled={payingNewLender && !newLenderName.trim()}
+            >
               {payAmount.trim() ? 'Record' : 'Pay all'}
             </Button>
             <Button variant="ghost" onClick={() => setPayOpen(false)} className="h-[38px]">
               Cancel
             </Button>
+            {payIsLoan && (
+              <p className="basis-full text-[11.5px] text-[var(--text-muted)]">
+                The cost counts as paid, and you’ll owe{' '}
+                <b>{payingNewLender ? newLenderName.trim() || 'them' : payAccount?.name}</b>
+                {payAccount && isLender(payAccount) && lenderStats(payAccount, transactions).owed > 0.5 ? (
+                  <>
+                    {' '}
+                    (already{' '}
+                    <Amount
+                      pkr={
+                        lenderStats(payAccount, transactions).owed *
+                        (payAccount.currency === 'USD' ? settings.rates.market : 1)
+                      }
+                      compact
+                      tone="muted"
+                    />
+                    )
+                  </>
+                ) : null}
+                . Pay them back in parts under <b>Money → People I owe</b>.
+              </p>
+            )}
           </div>
         )}
         {payments.length > 0 && (
@@ -667,6 +741,7 @@ export function CostEditor({ cost, onClose }: CostEditorProps) {
                 <li key={p.id} className="flex items-center justify-between gap-2 py-2">
                   <span className="text-[var(--text-muted)]">
                     {formatShortDate(p.date)} · {acc?.name ?? 'Account'}
+                    {acc && isLender(acc) ? ' (borrowed)' : ''}
                   </span>
                   <span className="flex items-center gap-2">
                     <Amount

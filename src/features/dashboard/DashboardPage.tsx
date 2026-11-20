@@ -14,6 +14,9 @@ import {
   selectPlanTotalEffectivePkr,
   selectPlanTotalMarketPkr,
   selectTotalFundsPkr,
+  selectTotalOwedPkr,
+  isLender,
+  lenderStats,
   selectTotalPaidPkr,
 } from '../../store/selectors';
 import { daysUntil, formatShortDate } from '../../lib/dates';
@@ -57,6 +60,7 @@ export function DashboardPage() {
   const [includeMaybes, setIncludeMaybes] = useState(false);
 
   const fundsPkr = selectTotalFundsPkr(state);
+  const owedPkr = selectTotalOwedPkr(state);
   const paidPkr = selectTotalPaidPkr(state, includeMaybes);
   const planMarketPkr = selectPlanTotalMarketPkr(state, includeMaybes);
   const planCardPkr = selectPlanTotalEffectivePkr(state, includeMaybes);
@@ -96,7 +100,11 @@ export function DashboardPage() {
     .sort((a, b) => a.days - b.days)
     .slice(0, 4);
 
-  const liveAccounts = accounts.filter((a) => !a.archived);
+  const liveAccounts = accounts.filter((a) => !a.archived && !isLender(a));
+  const owing = accounts
+    .filter((a) => !a.archived && isLender(a))
+    .map((a) => ({ a, owed: lenderStats(a, transactions).owed }))
+    .filter((x) => x.owed > 0.5);
 
   return (
     <div className="space-y-4">
@@ -105,6 +113,7 @@ export function DashboardPage() {
         includeMaybes={includeMaybes}
         onToggleMaybes={() => setIncludeMaybes((v) => !v)}
         fundsPkr={fundsPkr}
+        owedPkr={owedPkr}
         paidPkr={paidPkr}
         planMarketPkr={planMarketPkr}
         planCardPkr={planCardPkr}
@@ -254,6 +263,24 @@ export function DashboardPage() {
                     usd={acc.currency === 'USD' ? accountBalance(acc, transactions) : undefined}
                     displayCurrency={acc.currency}
                     compact
+                  />
+                </p>
+              </Link>
+            ))}
+            {owing.map(({ a, owed }) => (
+              <Link
+                key={a.id}
+                to="/accounts"
+                className="rounded-[14px] bg-[var(--negative-soft)]/60 px-4 py-3 hover:bg-[var(--negative-soft)] transition-colors"
+              >
+                <p className="text-xs text-[var(--text-muted)] truncate">Owe {a.name}</p>
+                <p className="text-base font-semibold num mt-0.5">
+                  <Amount
+                    pkr={a.currency === 'PKR' ? owed : owed * settings.rates.market}
+                    usd={a.currency === 'USD' ? owed : undefined}
+                    displayCurrency={a.currency}
+                    compact
+                    tone="negative"
                   />
                 </p>
               </Link>
