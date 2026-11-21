@@ -15,6 +15,7 @@ import {
   selectPlanTotalMarketPkr,
   selectTotalFundsPkr,
   selectTotalOwedPkr,
+  selectExtrasPkr,
   isLender,
   lenderStats,
   selectTotalPaidPkr,
@@ -61,6 +62,8 @@ export function DashboardPage() {
 
   const fundsPkr = selectTotalFundsPkr(state);
   const owedPkr = selectTotalOwedPkr(state);
+  const owedAllPkr = selectTotalOwedPkr(state, { all: true });
+  const extras = selectExtrasPkr(state);
   const paidPkr = selectTotalPaidPkr(state, includeMaybes);
   const planMarketPkr = selectPlanTotalMarketPkr(state, includeMaybes);
   const planCardPkr = selectPlanTotalEffectivePkr(state, includeMaybes);
@@ -114,6 +117,9 @@ export function DashboardPage() {
         onToggleMaybes={() => setIncludeMaybes((v) => !v)}
         fundsPkr={fundsPkr}
         owedPkr={owedPkr}
+        owedAllPkr={owedAllPkr}
+        extrasPkr={extras.total}
+        extrasSurePkr={extras.sure + extras.likely}
         paidPkr={paidPkr}
         planMarketPkr={planMarketPkr}
         planCardPkr={planCardPkr}

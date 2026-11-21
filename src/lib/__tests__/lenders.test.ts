@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { buildEmptyAppData } from '../../store/seed';
 import { migrate } from '../../store/migrations';
+import { linkCostToLender, syncLinkedLoanCosts } from '../../store/loanLinks';
 import {
   accountBalance,
   costPaid,
@@ -12,6 +13,7 @@ import {
   selectTotalFundsPkr,
   selectTotalOwedPkr,
   selectTotalPaidPkr,
+  selectExtrasPkr,
 } from '../../store/selectors';
 import { Account, AppData, Cost, Transaction } from '../../types';
 
@@ -142,5 +144,97 @@ describe('people I owe (lender accounts, v5)', () => {
     const old = { ...d, accounts: [{ ...d.accounts[0], role: undefined }, d.accounts[1]] };
     const m = migrate(old, 4);
     expect(m.accounts.map((a) => a.role)).toEqual(['funding', 'lender']);
+  });
+
+  it('linking a loan cost: debt moves into Left to pay, repaying pays the cost, spare is unchanged', () => {
+    const d = world();
+    const loan: Cost = {
+      ...d.costs[0],
+      id: 'loan',
+      name: 'Bhai loan',
+      categoryId: 'loans',
+      money: { amount: 200_000, currency: 'PKR' },
+    };
+    d.costs = [loan];
+    // I'd already paid 50k of the loan cost from my bank before linking
+    d.transactions = [tx({ id: 'p1', type: 'payment', accountId: 'bank', costId: 'loan', amount: 50_000 })];
+    const gapBefore = selectGapPkr(d); // 950k − 150k
+    expect(gapBefore).toBe(800_000);
+
+    const linked = { ...d, ...linkCostToLender(d, 'loan', 'ali') };
+    const ali = linked.accounts.find((a) => a.id === 'ali')!;
+    expect(ali.openingBalance).toBe(-200_000); // the cost amount became the debt
+    expect(linked.transactions[0].type).toBe('transfer'); // old payment → repayment to Ali
+    expect(lenderStats(ali, linked.transactions)).toEqual({
+      borrowed: 200_000,
+      repaid: 50_000,
+      owed: 150_000,
+    });
+    expect(linked.costs[0].lenderId).toBe('ali');
+    expect(costPaid(linked.costs[0], linked.transactions, linked.accounts, linked.settings)).toBe(50_000);
+    expect(selectRemainingPkr(linked)).toBe(150_000);
+    expect(selectTotalOwedPkr(linked)).toBe(0); // already in Left to pay
+    expect(selectTotalOwedPkr(linked, { all: true })).toBe(150_000);
+    expect(selectGapPkr(linked)).toBe(gapBefore);
+
+    // Ali pays something else for me → the loan cost grows with it
+    const more = {
+      ...linked,
+      transactions: [
+        ...linked.transactions,
+        tx({ id: 'b2', type: 'withdrawal', accountId: 'ali', amount: 30_000 }),
+      ],
+    };
+    const synced = syncLinkedLoanCosts(more)!;
+    expect(synced[0].money).toEqual({ amount: 230_000, currency: 'PKR' });
+    expect(syncLinkedLoanCosts({ ...more, costs: synced })).toBeNull();
+  });
+
+  it('a linked cost left out of the plan → its debt counts against the spare again', () => {
+    const d = world();
+    d.costs = [{ ...d.costs[0], id: 'loan', money: { amount: 100_000, currency: 'PKR' } }];
+    const linked = { ...d, ...linkCostToLender(d, 'loan', 'ali') };
+    linked.costs = linked.costs.map((c) => ({ ...c, included: false }));
+    expect(selectTotalOwedPkr(linked)).toBe(100_000);
+  });
+
+  it('extras: pending only, by chance', () => {
+    const d = world();
+    d.extras = [
+      {
+        id: 'e1',
+        name: 'Bike',
+        kind: 'sell',
+        money: { amount: 100_000, currency: 'PKR' },
+        chance: 'likely',
+        order: 0,
+        createdAt: now,
+      },
+      {
+        id: 'e2',
+        name: 'Refund',
+        kind: 'income',
+        money: { amount: 100, currency: 'USD' },
+        chance: 'sure',
+        order: 1,
+        createdAt: now,
+      },
+      {
+        id: 'e3',
+        name: 'Watch',
+        kind: 'sell',
+        money: { amount: 5_000, currency: 'PKR' },
+        chance: 'maybe',
+        receivedTxId: 'dep',
+        order: 2,
+        createdAt: now,
+      },
+    ];
+    d.transactions = [tx({ id: 'dep', type: 'deposit', accountId: 'bank', amount: 5_000 })];
+    const s = selectExtrasPkr(d);
+    expect(s.likely).toBe(100_000);
+    expect(s.sure).toBe(100 * d.settings.rates.market);
+    expect(s.maybe).toBe(0);
+    expect(s.count).toBe(2);
   });
 });

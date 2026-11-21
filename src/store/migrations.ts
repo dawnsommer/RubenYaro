@@ -1,8 +1,8 @@
 import { nanoid } from 'nanoid';
-import { Account, AppData, SubCost } from '../types';
+import { Account, AppData, Cost, Extra, SubCost } from '../types';
 import { buildDefaultSettings } from './seed';
 
-export const CURRENT_SCHEMA_VERSION = 5;
+export const CURRENT_SCHEMA_VERSION = 6;
 
 export function isValidAppData(value: unknown): value is AppData {
   if (!value || typeof value !== 'object') return false;
@@ -28,17 +28,20 @@ export function migrate(persistedState: unknown, version: number): AppData {
       costs: [],
       tasks: [],
       inheritance: null,
+      extras: [],
     };
   }
 
   const state = persistedState as Partial<AppData>;
 
-  const costs = Array.isArray(state.costs)
-    ? state.costs.map((c) => ({
+  const costs: Cost[] = Array.isArray(state.costs)
+    ? state.costs.map((c): Cost => ({
         ...c,
         maybe: typeof c.maybe === 'boolean' ? c.maybe : false,
         included: typeof c.included === 'boolean' ? c.included : true,
         archived: typeof c.archived === 'boolean' ? c.archived : false,
+        // v6: loan cost ↔ person I owe
+        lenderId: typeof c.lenderId === 'string' && c.lenderId ? c.lenderId : undefined,
         subCosts: Array.isArray(c.subCosts)
           ? c.subCosts.map((sc): SubCost => ({
               ...sc,
@@ -129,5 +132,16 @@ export function migrate(persistedState: unknown, version: number): AppData {
     // v3: stand-alone inheritance planner (absent before v3 → null)
     inheritance:
       state.inheritance && typeof state.inheritance === 'object' ? state.inheritance : null,
+    // v6: things I could sell / money I expect
+    extras: Array.isArray(state.extras)
+      ? state.extras
+          .filter((e): e is Extra => !!e && typeof e === 'object' && typeof e.name === 'string' && !!e.money)
+          .map((e, i) => ({
+            ...e,
+            kind: e.kind === 'income' ? 'income' : 'sell',
+            chance: e.chance === 'sure' || e.chance === 'maybe' ? e.chance : 'likely',
+            order: typeof e.order === 'number' ? e.order : i,
+          }))
+      : [],
   };
 }

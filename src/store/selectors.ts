@@ -3,6 +3,7 @@ import {
   AppData,
   Cost,
   CostVariant,
+  Extra,
   Settings,
   SubCost,
   Transaction,
@@ -207,6 +208,12 @@ export function costPaid(
       }
     }
   }
+  // v6: a loan cost linked to a person — paying that person back is paying this cost
+  const lender = cost.lenderId ? accMap.get(cost.lenderId) : undefined;
+  if (lender && isLender(lender)) {
+    const repaid = lenderStats(lender, transactions).repaid;
+    totalPkr += moneyToPkr({ amount: repaid, currency: lender.currency }, ctx, cost.conversionMode, cost.tax);
+  }
   return totalPkr;
 }
 
@@ -372,10 +379,29 @@ export function lenderOwedPkr(acc: Account, transactions: Transaction[], setting
   return acc.currency === 'PKR' ? owed : owed * settings.rates.market;
 }
 
-/** Σ still owed to people (PKR). This has to come out of my money, so it lowers the spare. */
-export function selectTotalOwedPkr(data: AppData): number {
+/** The plan cost a person is linked to (v6), if any. */
+export function linkedCostFor(lenderId: string, costs: Cost[]): Cost | undefined {
+  return costs.find((c) => c.lenderId === lenderId);
+}
+
+/** A linked person's debt is already in "Left to pay" when their cost is a counted (non-maybe) plan cost. */
+function debtCountedInPlan(lender: Account, data: AppData, todayIso: string): boolean {
+  const c = linkedCostFor(lender.id, data.costs);
+  return !!c && !c.maybe && getActivePlanCosts([c], todayIso).length === 1;
+}
+
+/**
+ * Σ still owed to people (PKR). This has to come out of my money, so it lowers the spare.
+ * By default people whose loan is already a plan cost are left out (it's in "Left to pay" instead);
+ * `all: true` gives everything I owe.
+ */
+export function selectTotalOwedPkr(
+  data: AppData,
+  opts: { all?: boolean; todayIso?: string } = {}
+): number {
+  const today = opts.todayIso ?? new Date().toISOString().slice(0, 10);
   return data.accounts
-    .filter((a) => isLender(a) && !a.archived)
+    .filter((a) => isLender(a) && !a.archived && (opts.all || !debtCountedInPlan(a, data, today)))
     .reduce((sum, a) => sum + lenderOwedPkr(a, data.transactions, data.settings), 0);
 }
 
@@ -648,4 +674,36 @@ export function buildAccountLedger(
   }
 
   return rows.reverse();
+}
+
+// ── Extras: things I could sell / money I expect (v6) ───────────────────────
+/** An extra counts as received only while its deposit still exists. */
+export function extraReceived(extra: Extra, transactions: Transaction[]): boolean {
+  return !!extra.receivedTxId && transactions.some((t) => t.id === extra.receivedTxId);
+}
+
+/** Real money coming in → dollars at the market rate. */
+export function extraPkr(extra: Extra, settings: Settings): number {
+  return extra.money.currency === 'PKR' ? extra.money.amount : extra.money.amount * settings.rates.market;
+}
+
+export interface ExtrasSummary {
+  sure: number;
+  likely: number;
+  maybe: number;
+  total: number;
+  count: number;
+}
+
+/** Pending extras in PKR, by chance. */
+export function selectExtrasPkr(data: AppData): ExtrasSummary {
+  const out: ExtrasSummary = { sure: 0, likely: 0, maybe: 0, total: 0, count: 0 };
+  for (const e of data.extras ?? []) {
+    if (extraReceived(e, data.transactions)) continue;
+    const v = extraPkr(e, data.settings);
+    out[e.chance] += v;
+    out.total += v;
+    out.count += 1;
+  }
+  return out;
 }

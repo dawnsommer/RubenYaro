@@ -6,6 +6,7 @@ import {
   AppData,
   Category,
   Cost,
+  Extra,
   InheritancePlan,
   KeyDate,
   Phase,
@@ -23,6 +24,7 @@ import {
   SeedFormatInput,
 } from './seed';
 import { CURRENT_SCHEMA_VERSION, isValidAppData, migrate } from './migrations';
+import { linkCostToLender, syncLinkedLoanCosts } from './loanLinks';
 
 export const PERSIST_KEY = 'rubenyaro:v1';
 export const SNAPSHOTS_KEY = 'rubenyaro:snapshots';
@@ -42,6 +44,7 @@ export function pickAppData(state: AppData): AppData {
     costs: state.costs,
     tasks: state.tasks,
     inheritance: state.inheritance ?? null,
+    extras: state.extras ?? [],
   };
 }
 
@@ -128,6 +131,19 @@ export interface StoreActions {
   updateTask: (id: string, patch: Partial<Task>) => void;
   deleteTask: (id: string) => void;
   reorderTasks: (orderedIds: string[]) => void;
+
+  // Loan costs ↔ people I owe (v6)
+  linkCostToLender: (costId: string, lenderId: string) => void;
+  unlinkCost: (costId: string) => void;
+
+  // Extras: things I could sell / money I expect (v6)
+  addExtra: (extra: Omit<Extra, 'id' | 'order' | 'createdAt'>) => Extra;
+  updateExtra: (id: string, patch: Partial<Extra>) => void;
+  deleteExtra: (id: string) => void;
+  /** It came in: deposit `amount` (account currency) into my account and mark the extra received. */
+  receiveExtra: (id: string, accountId: string, amount: number, date: string) => void;
+  /** Undo "received": removes the deposit too. */
+  unreceiveExtra: (id: string) => void;
 
   // Inheritance (stand-alone planner)
   setInheritance: (plan: InheritancePlan | null) => void;
@@ -592,6 +608,57 @@ export const useStore = create<RubenYaroStore>()(
           };
         }),
 
+      linkCostToLender: (costId, lenderId) =>
+        set((state) => linkCostToLender(pickAppData(state), costId, lenderId)),
+
+      unlinkCost: (costId) =>
+        set((state) => ({
+          costs: state.costs.map((c) => (c.id === costId ? { ...c, lenderId: undefined } : c)),
+        })),
+
+      addExtra: (extra) => {
+        const created: Extra = {
+          ...extra,
+          id: nanoid(10),
+          order: (get().extras ?? []).length,
+          createdAt: new Date().toISOString(),
+        };
+        set((state) => ({ extras: [...(state.extras ?? []), created] }));
+        return created;
+      },
+
+      updateExtra: (id, patch) =>
+        set((state) => ({
+          extras: (state.extras ?? []).map((e) => (e.id === id ? { ...e, ...patch } : e)),
+        })),
+
+      deleteExtra: (id) =>
+        set((state) => ({ extras: (state.extras ?? []).filter((e) => e.id !== id) })),
+
+      receiveExtra: (id, accountId, amount, date) => {
+        const extra = (get().extras ?? []).find((e) => e.id === id);
+        if (!extra || !(amount > 0)) return;
+        const tx = get().addTransaction({
+          type: 'deposit',
+          date,
+          accountId,
+          amount,
+          note: extra.kind === 'sell' ? `Sold ${extra.name}` : `Received ${extra.name}`,
+        });
+        set((state) => ({
+          extras: (state.extras ?? []).map((e) => (e.id === id ? { ...e, receivedTxId: tx.id } : e)),
+        }));
+      },
+
+      unreceiveExtra: (id) =>
+        set((state) => {
+          const extra = (state.extras ?? []).find((e) => e.id === id);
+          return {
+            transactions: state.transactions.filter((t) => t.id !== extra?.receivedTxId),
+            extras: (state.extras ?? []).map((e) => (e.id === id ? { ...e, receivedTxId: undefined } : e)),
+          };
+        }),
+
       setInheritance: (plan) =>
         set({ inheritance: plan ? { ...plan, updatedAt: new Date().toISOString() } : null }),
 
@@ -673,3 +740,11 @@ export const useStore = create<RubenYaroStore>()(
     }
   )
 );
+
+// Keep loan costs that follow a person in step with what I took from them (also after import / sync / undo).
+useStore.subscribe((state, prev) => {
+  if (state.costs === prev.costs && state.accounts === prev.accounts && state.transactions === prev.transactions)
+    return;
+  const costs = syncLinkedLoanCosts(state);
+  if (costs) useStore.setState({ costs });
+});

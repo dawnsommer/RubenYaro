@@ -37,6 +37,9 @@ import {
   Switch,
 } from '../../components/ui';
 import { todayIso } from './costUi';
+import { LinkedLoanPanel, LoanPersonPicker } from './CostLoanLink';
+import { canLinkCost } from '../../store/loanLinks';
+import { loanCostHome } from '../accounts/PeopleIOwe';
 
 export interface CostEditorProps {
   cost: Cost;
@@ -417,6 +420,10 @@ export function CostEditor({ cost, onClose }: CostEditorProps) {
 
   const status = statusOf(cost);
   const category = settings.categories.find((c) => c.id === cost.categoryId);
+  // v6: a loan cost can follow a person I owe
+  const loanLender = cost.lenderId ? accounts.find((a) => a.id === cost.lenderId && isLender(a)) : undefined;
+  const linkable = !loanLender && canLinkCost(cost);
+  const isLoanCategory = cost.categoryId === loanCostHome(settings).categoryId;
 
   return (
     <div className="animate-fade-up space-y-5 px-4 sm:px-5 pt-1 pb-5">
@@ -430,7 +437,14 @@ export function CostEditor({ cost, onClose }: CostEditorProps) {
           placeholder="What is it?"
           className="field !text-base font-semibold"
         />
-        {src.subCosts.length > 0 ? (
+        {loanLender ? (
+          <div className="field !bg-[var(--surface-2)] font-semibold num flex items-center justify-between gap-2">
+            <span className="text-xs font-medium text-[var(--text-muted)] truncate">
+              Took from {loanLender.name}
+            </span>
+            <Amount pkr={totalPkr} showSecondary />
+          </div>
+        ) : src.subCosts.length > 0 ? (
           <div className="field !bg-[var(--surface-2)] font-semibold num flex items-center justify-between gap-2">
             <span className="text-xs font-medium text-[var(--text-muted)]">Total of items</span>
             <Amount pkr={totalPkr} showSecondary />
@@ -543,229 +557,239 @@ export function CostEditor({ cost, onClose }: CostEditorProps) {
         </Section>
       )}
 
-      {/* 3 · items (sub-costs) */}
-      <Section
-        title={src.subCosts.length ? `Items · ${src.subCosts.length}` : 'Items'}
-        aside={
-          maybeExtraPkr > 0 ? (
-            <span className="text-xs text-[var(--maybe)] num">
-              maybes +
-              <Amount pkr={maybeExtraPkr} compact className="!text-inherit" />
-            </span>
-          ) : undefined
-        }
-      >
-        <div className="rounded-[14px] border border-[var(--border)] divide-y divide-[var(--border)] overflow-hidden">
-          {src.subCosts.map((sc) => {
-            const st = statusOf(sc);
-            return (
-              <div key={sc.id} className={`px-3 py-2 ${st === 'off' ? 'bg-[var(--surface-2)]/40' : ''}`}>
-                <div className="flex items-center gap-2">
-                  <input
-                    type="text"
-                    value={sc.name}
-                    onChange={(e) => updateSub(sc.id, { name: e.target.value })}
-                    aria-label="Item name"
-                    className={`flex-1 min-w-0 bg-transparent text-sm font-medium outline-none ${
-                      st === 'off' ? 'line-through text-[var(--text-faint)]' : ''
-                    }`}
-                  />
-                  <MoneyInput
-                    compact
-                    value={sc.money}
-                    onChange={(money) => updateSub(sc.id, { money })}
-                    className="max-sm:!hidden w-[170px] shrink-0"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => deleteSub(sc.id)}
-                    aria-label="Remove item"
-                    className="w-7 h-7 grid place-items-center rounded-full text-[var(--text-faint)] hover:text-[var(--negative)] hover:bg-[var(--negative-soft)] cursor-pointer shrink-0"
-                  >
-                    <X className="w-3.5 h-3.5" />
-                  </button>
-                </div>
-                <div className="mt-1.5 flex items-center gap-2">
-                  <StatusChip status={st} onChange={(n) => updateSub(sc.id, statusPatch(n))} />
-                  <DatePill
-                    small
-                    value={sc.dueDate}
-                    emptyLabel={cost.dueDate ? `Due with cost` : 'Due date'}
-                    onChange={(d) => updateSub(sc.id, { dueDate: d })}
-                  />
-                  <MoneyInput
-                    compact
-                    value={sc.money}
-                    onChange={(money) => updateSub(sc.id, { money })}
-                    className="sm:!hidden flex-1 min-w-[110px]"
-                  />
-                  <span className="max-sm:hidden ml-auto text-[11px] text-[var(--text-faint)] num">
-                    <Amount pkr={subCostTotalPkr(cost, sc, settings)} compact tone="muted" />
-                  </span>
-                </div>
-              </div>
-            );
-          })}
-          <div className="flex flex-wrap sm:flex-nowrap items-center gap-2 px-3 py-2 bg-[var(--surface-2)]/50">
-            <Plus className="w-4 h-4 text-[var(--text-faint)] shrink-0" />
-            <input
-              type="text"
-              value={newSubName}
-              onChange={(e) => setNewSubName(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && addSub()}
-              placeholder={src.subCosts.length ? 'Add item…' : 'Split into items (e.g. fee, ticket)…'}
-              className="flex-1 min-w-[60%] sm:min-w-0 h-8 bg-transparent text-sm outline-none"
-            />
-            <MoneyInput
-              compact
-              value={newSubMoney}
-              onChange={setNewSubMoney}
-              onEnter={addSub}
-              className="flex-1 min-w-[180px] sm:flex-none sm:w-[170px]"
-            />
-            <Button size="sm" variant="secondary" onClick={addSub} disabled={!newSubName.trim()}>
-              Add
-            </Button>
-          </div>
-        </div>
-      </Section>
+      {linkable && isLoanCategory && <LoanPersonPicker cost={cost} prominent />}
 
-      {/* 4 · payments: one line until you need the form */}
-      <Section
-        title="Paid"
-        aside={
-          remainingPkr > 0.5 && !payOpen ? (
-            <Button size="sm" variant="secondary" onClick={() => setPayOpen(true)}>
-              <Plus className="w-3.5 h-3.5" /> Record payment
-            </Button>
-          ) : undefined
-        }
-      >
-        <div className="flex items-center gap-3">
-          <Progress value={paidPct} tone="positive" className="flex-1" />
-          <span className="text-xs text-[var(--text-muted)] num whitespace-nowrap">
-            {remainingPkr <= 0.5 && totalPkr > 0 ? (
-              <span className="font-medium text-[var(--positive)]">Fully paid</span>
-            ) : (
-              <>
-                <Amount pkr={paidPkr} compact tone={paidPkr > 0 ? 'positive' : 'muted'} /> of{' '}
-                <Amount pkr={totalPkr} compact />
-              </>
-            )}
-          </span>
-        </div>
-        {payOpen && remainingPkr > 0.5 && (
-          <div className="flex flex-wrap items-end gap-2 rounded-[14px] bg-[var(--surface-2)]/60 p-3 animate-fade-in">
-            <Select
-              label="Paid by"
-              value={payingNewLender ? NEW_LENDER : (payAccount?.id ?? '')}
-              onChange={setPayAccountId}
-              options={[
-                ...activeAccounts.map((a) => ({
-                  value: a.id,
-                  label: isLender(a) ? `${a.name} (I'll owe them)` : `${a.name} · ${a.currency}`,
-                })),
-                { value: NEW_LENDER, label: '+ Someone lent it to me…' },
-              ]}
-              className="flex-1 min-w-[150px]"
-            />
-            {payingNewLender && (
-              <div className="flex-1 min-w-[140px]">
-                <label className="block text-xs font-medium text-[var(--text-muted)] mb-1.5">Who paid?</label>
-                <input
-                  type="text"
-                  value={newLenderName}
-                  onChange={(e) => setNewLenderName(e.target.value)}
-                  placeholder="e.g. Ali"
-                  className="field"
-                  autoFocus
-                />
-              </div>
-            )}
-            <div className="w-[130px]">
-              <label className="block text-xs font-medium text-[var(--text-muted)] mb-1.5">
-                Amount ({payCurrency})
-              </label>
-              <input
-                type="text"
-                inputMode="decimal"
-                value={payAmount}
-                onChange={(e) => setPayAmount(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && recordPayment()}
-                placeholder={Math.round(remainingInAcc).toLocaleString('en-US')}
-                className="field num"
-              />
-            </div>
-            <DateInput label="Date" value={payDate} onChange={setPayDate} className="w-[140px]" />
-            <Button
-              onClick={recordPayment}
-              className="h-[38px]"
-              disabled={payingNewLender && !newLenderName.trim()}
-            >
-              {payAmount.trim() ? 'Record' : 'Pay all'}
-            </Button>
-            <Button variant="ghost" onClick={() => setPayOpen(false)} className="h-[38px]">
-              Cancel
-            </Button>
-            {payIsLoan && (
-              <p className="basis-full text-[11.5px] text-[var(--text-muted)]">
-                The cost counts as paid, and you’ll owe{' '}
-                <b>{payingNewLender ? newLenderName.trim() || 'them' : payAccount?.name}</b>
-                {payAccount && isLender(payAccount) && lenderStats(payAccount, transactions).owed > 0.5 ? (
-                  <>
-                    {' '}
-                    (already{' '}
-                    <Amount
-                      pkr={
-                        lenderStats(payAccount, transactions).owed *
-                        (payAccount.currency === 'USD' ? settings.rates.market : 1)
-                      }
-                      compact
-                      tone="muted"
-                    />
-                    )
-                  </>
-                ) : null}
-                . Pay them back in parts under <b>Money → People I owe</b>.
-              </p>
-            )}
-          </div>
-        )}
-        {payments.length > 0 && (
-          <ul className="text-xs divide-y divide-[var(--border)]">
-            {payments.map((p) => {
-              const acc = accounts.find((a) => a.id === p.accountId);
-              const curr = acc?.currency ?? 'PKR';
-              const pkrVal = moneyToPkr({ amount: p.amount, currency: curr }, ctx, 'effective');
+      {/* 3 · items (sub-costs) */}
+      {!loanLender && (
+        <Section
+          title={src.subCosts.length ? `Items · ${src.subCosts.length}` : 'Items'}
+          aside={
+            maybeExtraPkr > 0 ? (
+              <span className="text-xs text-[var(--maybe)] num">
+                maybes +
+                <Amount pkr={maybeExtraPkr} compact className="!text-inherit" />
+              </span>
+            ) : undefined
+          }
+        >
+          <div className="rounded-[14px] border border-[var(--border)] divide-y divide-[var(--border)] overflow-hidden">
+            {src.subCosts.map((sc) => {
+              const st = statusOf(sc);
               return (
-                <li key={p.id} className="flex items-center justify-between gap-2 py-2">
-                  <span className="text-[var(--text-muted)]">
-                    {formatShortDate(p.date)} · {acc?.name ?? 'Account'}
-                    {acc && isLender(acc) ? ' (borrowed)' : ''}
-                  </span>
-                  <span className="flex items-center gap-2">
-                    <Amount
-                      pkr={pkrVal}
-                      usd={curr === 'USD' ? p.amount : undefined}
-                      displayCurrency={curr}
-                      tone="positive"
-                      className="font-medium"
+                <div key={sc.id} className={`px-3 py-2 ${st === 'off' ? 'bg-[var(--surface-2)]/40' : ''}`}>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="text"
+                      value={sc.name}
+                      onChange={(e) => updateSub(sc.id, { name: e.target.value })}
+                      aria-label="Item name"
+                      className={`flex-1 min-w-0 bg-transparent text-sm font-medium outline-none ${
+                        st === 'off' ? 'line-through text-[var(--text-faint)]' : ''
+                      }`}
+                    />
+                    <MoneyInput
+                      compact
+                      value={sc.money}
+                      onChange={(money) => updateSub(sc.id, { money })}
+                      className="max-sm:!hidden w-[170px] shrink-0"
                     />
                     <button
                       type="button"
-                      onClick={() => state.deleteTransaction(p.id)}
-                      aria-label="Delete payment"
-                      className="w-6 h-6 grid place-items-center rounded-full text-[var(--text-faint)] hover:text-[var(--negative)] hover:bg-[var(--negative-soft)] cursor-pointer"
+                      onClick={() => deleteSub(sc.id)}
+                      aria-label="Remove item"
+                      className="w-7 h-7 grid place-items-center rounded-full text-[var(--text-faint)] hover:text-[var(--negative)] hover:bg-[var(--negative-soft)] cursor-pointer shrink-0"
                     >
-                      <X className="w-3 h-3" />
+                      <X className="w-3.5 h-3.5" />
                     </button>
-                  </span>
-                </li>
+                  </div>
+                  <div className="mt-1.5 flex items-center gap-2">
+                    <StatusChip status={st} onChange={(n) => updateSub(sc.id, statusPatch(n))} />
+                    <DatePill
+                      small
+                      value={sc.dueDate}
+                      emptyLabel={cost.dueDate ? `Due with cost` : 'Due date'}
+                      onChange={(d) => updateSub(sc.id, { dueDate: d })}
+                    />
+                    <MoneyInput
+                      compact
+                      value={sc.money}
+                      onChange={(money) => updateSub(sc.id, { money })}
+                      className="sm:!hidden flex-1 min-w-[110px]"
+                    />
+                    <span className="max-sm:hidden ml-auto text-[11px] text-[var(--text-faint)] num">
+                      <Amount pkr={subCostTotalPkr(cost, sc, settings)} compact tone="muted" />
+                    </span>
+                  </div>
+                </div>
               );
             })}
-          </ul>
-        )}
-      </Section>
+            <div className="flex flex-wrap sm:flex-nowrap items-center gap-2 px-3 py-2 bg-[var(--surface-2)]/50">
+              <Plus className="w-4 h-4 text-[var(--text-faint)] shrink-0" />
+              <input
+                type="text"
+                value={newSubName}
+                onChange={(e) => setNewSubName(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && addSub()}
+                placeholder={src.subCosts.length ? 'Add item…' : 'Split into items (e.g. fee, ticket)…'}
+                className="flex-1 min-w-[60%] sm:min-w-0 h-8 bg-transparent text-sm outline-none"
+              />
+              <MoneyInput
+                compact
+                value={newSubMoney}
+                onChange={setNewSubMoney}
+                onEnter={addSub}
+                className="flex-1 min-w-[180px] sm:flex-none sm:w-[170px]"
+              />
+              <Button size="sm" variant="secondary" onClick={addSub} disabled={!newSubName.trim()}>
+                Add
+              </Button>
+            </div>
+          </div>
+        </Section>
+      )}
+
+      {/* 4 · payments: one line until you need the form */}
+      {loanLender ? (
+        <LinkedLoanPanel cost={cost} lender={loanLender} />
+      ) : (
+        <Section
+          title="Paid"
+          aside={
+            remainingPkr > 0.5 && !payOpen ? (
+              <Button size="sm" variant="secondary" onClick={() => setPayOpen(true)}>
+                <Plus className="w-3.5 h-3.5" /> Record payment
+              </Button>
+            ) : undefined
+          }
+        >
+          <div className="flex items-center gap-3">
+            <Progress value={paidPct} tone="positive" className="flex-1" />
+            <span className="text-xs text-[var(--text-muted)] num whitespace-nowrap">
+              {remainingPkr <= 0.5 && totalPkr > 0 ? (
+                <span className="font-medium text-[var(--positive)]">Fully paid</span>
+              ) : (
+                <>
+                  <Amount pkr={paidPkr} compact tone={paidPkr > 0 ? 'positive' : 'muted'} /> of{' '}
+                  <Amount pkr={totalPkr} compact />
+                </>
+              )}
+            </span>
+          </div>
+          {payOpen && remainingPkr > 0.5 && (
+            <div className="flex flex-wrap items-end gap-2 rounded-[14px] bg-[var(--surface-2)]/60 p-3 animate-fade-in">
+              <Select
+                label="Paid by"
+                value={payingNewLender ? NEW_LENDER : (payAccount?.id ?? '')}
+                onChange={setPayAccountId}
+                options={[
+                  ...activeAccounts.map((a) => ({
+                    value: a.id,
+                    label: isLender(a) ? `${a.name} (I'll owe them)` : `${a.name} · ${a.currency}`,
+                  })),
+                  { value: NEW_LENDER, label: '+ Someone lent it to me…' },
+                ]}
+                className="flex-1 min-w-[150px]"
+              />
+              {payingNewLender && (
+                <div className="flex-1 min-w-[140px]">
+                  <label className="block text-xs font-medium text-[var(--text-muted)] mb-1.5">
+                    Who paid?
+                  </label>
+                  <input
+                    type="text"
+                    value={newLenderName}
+                    onChange={(e) => setNewLenderName(e.target.value)}
+                    placeholder="e.g. Ali"
+                    className="field"
+                    autoFocus
+                  />
+                </div>
+              )}
+              <div className="w-[130px]">
+                <label className="block text-xs font-medium text-[var(--text-muted)] mb-1.5">
+                  Amount ({payCurrency})
+                </label>
+                <input
+                  type="text"
+                  inputMode="decimal"
+                  value={payAmount}
+                  onChange={(e) => setPayAmount(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && recordPayment()}
+                  placeholder={Math.round(remainingInAcc).toLocaleString('en-US')}
+                  className="field num"
+                />
+              </div>
+              <DateInput label="Date" value={payDate} onChange={setPayDate} className="w-[140px]" />
+              <Button
+                onClick={recordPayment}
+                className="h-[38px]"
+                disabled={payingNewLender && !newLenderName.trim()}
+              >
+                {payAmount.trim() ? 'Record' : 'Pay all'}
+              </Button>
+              <Button variant="ghost" onClick={() => setPayOpen(false)} className="h-[38px]">
+                Cancel
+              </Button>
+              {payIsLoan && (
+                <p className="basis-full text-[11.5px] text-[var(--text-muted)]">
+                  The cost counts as paid, and you’ll owe{' '}
+                  <b>{payingNewLender ? newLenderName.trim() || 'them' : payAccount?.name}</b>
+                  {payAccount && isLender(payAccount) && lenderStats(payAccount, transactions).owed > 0.5 ? (
+                    <>
+                      {' '}
+                      (already{' '}
+                      <Amount
+                        pkr={
+                          lenderStats(payAccount, transactions).owed *
+                          (payAccount.currency === 'USD' ? settings.rates.market : 1)
+                        }
+                        compact
+                        tone="muted"
+                      />
+                      )
+                    </>
+                  ) : null}
+                  . Pay them back in parts under <b>Money → People I owe</b>.
+                </p>
+              )}
+            </div>
+          )}
+          {payments.length > 0 && (
+            <ul className="text-xs divide-y divide-[var(--border)]">
+              {payments.map((p) => {
+                const acc = accounts.find((a) => a.id === p.accountId);
+                const curr = acc?.currency ?? 'PKR';
+                const pkrVal = moneyToPkr({ amount: p.amount, currency: curr }, ctx, 'effective');
+                return (
+                  <li key={p.id} className="flex items-center justify-between gap-2 py-2">
+                    <span className="text-[var(--text-muted)]">
+                      {formatShortDate(p.date)} · {acc?.name ?? 'Account'}
+                      {acc && isLender(acc) ? ' (borrowed)' : ''}
+                    </span>
+                    <span className="flex items-center gap-2">
+                      <Amount
+                        pkr={pkrVal}
+                        usd={curr === 'USD' ? p.amount : undefined}
+                        displayCurrency={curr}
+                        tone="positive"
+                        className="font-medium"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => state.deleteTransaction(p.id)}
+                        aria-label="Delete payment"
+                        className="w-6 h-6 grid place-items-center rounded-full text-[var(--text-faint)] hover:text-[var(--negative)] hover:bg-[var(--negative-soft)] cursor-pointer"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    </span>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </Section>
+      )}
 
       {/* More options */}
       <div className="rounded-[14px] border border-[var(--border)]">
@@ -782,6 +806,7 @@ export function CostEditor({ cost, onClose }: CostEditorProps) {
         </button>
         {moreOpen && (
           <div className="px-4 pb-4 space-y-5 border-t border-[var(--border)] pt-4 animate-fade-in">
+            {linkable && !isLoanCategory && <LoanPersonPicker cost={cost} />}
             <Switch
               checked={cost.kind === 'estimate'}
               onChange={(on) => update({ kind: on ? 'estimate' : 'fixed' })}

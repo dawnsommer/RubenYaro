@@ -104,6 +104,8 @@ export interface Cost extends CostItemBase {
   included: boolean;                           // toggle in/out of plan (what-if)
   archived: boolean; order: number; tags: string[];
   verify?: boolean;                            // seeded placeholder: show "verify price" chip
+  lenderId?: string;                           // v6: a loan cost linked to a person I owe (Money). Its amount
+                                               // follows what I took from them; repaying them counts as paid.
   createdAt: string; updatedAt: string;
 }
 
@@ -157,8 +159,23 @@ export interface InheritancePlan {
   updatedAt: string;
 }
 
+// v6: money I might get — things I could sell, or money I expect from somewhere. Never counted as my money
+// until marked received (which records a deposit into one of my accounts).
+export type ExtraChance = 'sure' | 'likely' | 'maybe';
+export interface Extra {
+  id: string; name: string;
+  kind: 'sell' | 'income';                   // sell = something I own · income = money expected from somewhere
+  money: Money;                              // what I expect to get
+  chance: ExtraChance;
+  date?: string;                             // when I expect it (yyyy-mm-dd)
+  note?: string;
+  receivedTxId?: string;                     // deposit made when it came in
+  order: number; createdAt: string;
+}
+
 export interface AppData {
   settings: Settings; accounts: Account[]; transactions: Transaction[];
   costs: Cost[]; tasks: Task[];
   inheritance?: InheritancePlan | null;      // schema v3
+  extras?: Extra[];                          // schema v6
 }

@@ -7,6 +7,8 @@ import {
   CircleCheck,
   HandCoins,
   Info,
+  Link2,
+  Unlink,
   Pencil,
   Plus,
   Receipt,
@@ -25,7 +27,10 @@ import {
   lenderHistory,
   lenderStats,
   LenderEvent,
+  linkedCostFor,
 } from '../../store/selectors';
+import { canLinkCost } from '../../store/loanLinks';
+import { Link } from 'react-router-dom';
 import { pkrToUsd } from '../../lib/currency';
 import { formatCurrency } from '../../lib/format';
 import { formatShortDate } from '../../lib/dates';
@@ -308,6 +313,7 @@ export function BorrowSheet({
   const unpaid = useMemo(
     () =>
       getActivePlanCosts(costs)
+        .filter((c) => !c.lenderId) // a loan cost is paid by repaying its person
         .map((c) => ({ c, left: costLeftIn(c, lender?.currency ?? 'PKR', state) }))
         .filter((x) => x.left > 0.5)
         .sort((a, b) => {
@@ -665,6 +671,122 @@ export function RepaySheet({ lender, onClose }: { lender: Account | null; onClos
   );
 }
 
+// ── Is this debt part of the plan? (link to a loan cost) ────────────────────
+const NEW_COST = '__new_cost';
+
+/** Cost category / phase for loans if the user has them, else the first ones. */
+export function loanCostHome(settings: Settings): { categoryId: string; phaseId: string } {
+  const cat =
+    settings.categories.find((c) => c.id === 'loans') ??
+    settings.categories.find((c) => /loan/i.test(c.name)) ??
+    settings.categories[0];
+  const phase =
+    settings.phases.find((p) => p.id === 'obligations') ??
+    settings.phases.find((p) => /loan|obligation/i.test(p.name)) ??
+    settings.phases[0];
+  return { categoryId: cat?.id ?? 'misc', phaseId: phase?.id ?? 'general' };
+}
+
+function LenderPlanLink({ lender, borrowed }: { lender: Account; borrowed: number }) {
+  const state = useStore();
+  const { costs, settings } = state;
+  const linked = linkedCostFor(lender.id, costs);
+  const [picking, setPicking] = useState(false);
+  const home = loanCostHome(settings);
+  const candidates = costs
+    .filter((c) => !c.archived && !c.lenderId && canLinkCost(c))
+    .sort((a, b) => Number(b.categoryId === home.categoryId) - Number(a.categoryId === home.categoryId));
+  const [choice, setChoice] = useState<string>(NEW_COST);
+
+  if (linked) {
+    const counted = linked.included && !linked.maybe && !linked.archived;
+    return (
+      <div className="mt-3 flex items-center gap-2 rounded-[12px] bg-[var(--accent-soft)]/60 px-3 py-2 text-[12px]">
+        <Link2 className="w-3.5 h-3.5 text-[var(--accent)] shrink-0" />
+        <span className="flex-1 min-w-0 truncate">
+          In plan as{' '}
+          <Link
+            to={`/costs?open=${linked.id}`}
+            className="font-semibold text-[var(--accent)] hover:underline"
+          >
+            {linked.name}
+          </Link>
+          {!counted && <span className="text-[var(--text-muted)]"> · not counted</span>}
+        </span>
+        <button
+          type="button"
+          onClick={() => state.unlinkCost(linked.id)}
+          title="Unlink from the plan cost"
+          aria-label="Unlink from the plan cost"
+          className="p-1 rounded-[6px] text-[var(--text-faint)] hover:text-[var(--text)] cursor-pointer"
+        >
+          <Unlink className="w-3.5 h-3.5" />
+        </button>
+      </div>
+    );
+  }
+
+  if (!picking) {
+    return (
+      <button
+        type="button"
+        onClick={() => {
+          setChoice(candidates.find((c) => c.categoryId === home.categoryId)?.id ?? NEW_COST);
+          setPicking(true);
+        }}
+        className="mt-3 w-full flex items-center gap-2 rounded-[12px] border border-dashed border-[var(--border-strong)] px-3 py-2 text-[12px] text-[var(--text-muted)] hover:text-[var(--text)] hover:bg-[var(--surface-2)]/50 cursor-pointer"
+      >
+        <Link2 className="w-3.5 h-3.5" /> Link to a loan cost in my plan
+      </button>
+    );
+  }
+
+  const link = () => {
+    let costId = choice;
+    if (choice === NEW_COST) {
+      costId = state.addCost({
+        name: `Repay ${lender.name}`,
+        money: { amount: Math.round(borrowed * 100) / 100, currency: lender.currency },
+        kind: 'fixed',
+        priority: 'must',
+        ...home,
+      }).id;
+    }
+    state.linkCostToLender(costId, lender.id);
+    setPicking(false);
+  };
+
+  return (
+    <div className="mt-3 rounded-[12px] bg-[var(--surface-2)]/70 p-3 space-y-2 animate-fade-in">
+      <Select
+        label="Which cost is this loan?"
+        value={choice}
+        onChange={setChoice}
+        options={[
+          { value: NEW_COST, label: `+ New cost “Repay ${lender.name}”` },
+          ...candidates.map((c) => ({
+            value: c.id,
+            label: `${c.name} · ${formatCurrency(c.money.amount, c.money.currency, { compact: true })}`,
+          })),
+        ]}
+      />
+      <p className="text-[11px] text-[var(--text-muted)]">
+        The cost will always equal what you took from {lender.name}; paying them back pays the cost.
+        {choice !== NEW_COST && borrowed <= 0.5 ? ' Its amount becomes what you owe them.' : ''}
+        {choice !== NEW_COST ? ' Payments already recorded on it become repayments.' : ''}
+      </p>
+      <div className="flex justify-end gap-2">
+        <Button size="sm" variant="ghost" onClick={() => setPicking(false)}>
+          Cancel
+        </Button>
+        <Button size="sm" onClick={link}>
+          <Link2 className="w-3.5 h-3.5" /> Link
+        </Button>
+      </div>
+    </div>
+  );
+}
+
 // ── One person ──────────────────────────────────────────────────────────────
 const EVENT_ICON: Record<LenderEvent['kind'], typeof Receipt> = {
   paid_cost: Receipt,
@@ -782,6 +904,8 @@ function LenderCard({
         </div>
       </div>
 
+      <LenderPlanLink lender={lender} borrowed={s.borrowed} />
+
       <div className="mt-3 flex items-center gap-2">
         {!cleared && (
           <Button size="sm" onClick={onRepay}>
@@ -870,7 +994,9 @@ export function PeopleIOwe() {
     .filter((a) => isLender(a) && (showArchived || !a.archived))
     .sort((a, b) => Number(a.archived) - Number(b.archived) || a.order - b.order);
   const archivedCount = accounts.filter((a) => isLender(a) && a.archived).length;
-  const loanCosts = getActivePlanCosts(costs).filter((c) => c.categoryId === 'loans');
+  const unlinkedLoanCosts = getActivePlanCosts(costs).filter(
+    (c) => c.categoryId === loanCostHome(state.settings).categoryId && !c.lenderId
+  );
 
   return (
     <section className="space-y-3">
@@ -930,12 +1056,13 @@ export function PeopleIOwe() {
         </div>
       )}
 
-      {lenders.length > 0 && loanCosts.length > 0 && (
+      {unlinkedLoanCosts.length > 0 && (
         <p className="flex items-start gap-1.5 text-[11.5px] text-[var(--text-muted)]">
           <Info className="w-3.5 h-3.5 mt-px shrink-0" />
           <span>
-            You also have loan costs in your plan ({loanCosts.map((c) => c.name).join(', ')}). If one of those
-            is the same debt as a person here, set that cost to <b>Left out</b> so it isn’t counted twice.
+            Loan costs in your plan not linked to a person: {unlinkedLoanCosts.map((c) => c.name).join(', ')}.
+            If one is money you owe someone here, use <b>Link to a loan cost</b> on their card (or open the
+            cost and pick who you owe) so it’s tracked in one place and never counted twice.
           </span>
         </p>
       )}

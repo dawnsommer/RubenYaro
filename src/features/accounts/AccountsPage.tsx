@@ -45,6 +45,7 @@ import {
   isLender,
 } from '../../store/selectors';
 import { PeopleIOwe } from './PeopleIOwe';
+import { Extras } from './Extras';
 import { Account, Currency, TxnType } from '../../types';
 import {
   Amount,
@@ -337,7 +338,8 @@ export function AccountsPage() {
   const grossFundsPkr = selectTotalGrossFundsPkr(state);
   const reservedPkr = selectTotalReservedPkr(state);
   const availablePkr = selectTotalFundsPkr(state);
-  const owedPkr = selectTotalOwedPkr(state);
+  const owedPkr = selectTotalOwedPkr(state, { all: true }); // everything I owe people
+  const owedOutsidePlanPkr = selectTotalOwedPkr(state); // the part not already a plan cost
   const lenderCount = accounts.filter((a) => isLender(a) && !a.archived).length;
 
   const openNewAccountSheet = () => {
@@ -560,7 +562,7 @@ export function AccountsPage() {
             </div>
             <div className="grid sm:grid-cols-2 gap-2.5">
               {rows.map((r) => {
-                const gap = availablePkr - owedPkr - Math.max(0, r.plan - paid);
+                const gap = availablePkr - owedOutsidePlanPkr - Math.max(0, r.plan - paid);
                 return (
                   <div key={r.label} className="rounded-[14px] bg-[var(--surface-2)] px-4 py-3">
                     <p className="text-[11px] text-[var(--text-muted)] num">{r.label}</p>
@@ -635,6 +637,8 @@ export function AccountsPage() {
       </div>
 
       <PeopleIOwe />
+
+      <Extras />
 
       {/* Account detail: ledger table (§6.3) */}
       {activeAccount && (

@@ -108,7 +108,7 @@ describe('store + seed + persistence (CP2)', () => {
   it('exports JSON and merges seed-format JSON via importJSON', () => {
     const s = useStore.getState();
     const exported = s.exportJSON();
-    expect(exported.schemaVersion).toBe(5);
+    expect(exported.schemaVersion).toBe(6);
     expect(exported.costs.length).toBe(10);
 
     const mergeResult = s.importJSON(
@@ -162,7 +162,7 @@ describe('store + seed + persistence (CP2)', () => {
 
   it('migrates partial or older persisted state cleanly', () => {
     const migrated = migrate({ costs: [{ id: 'c1', name: 'Test', money: { amount: 10, currency: 'USD' }, kind: 'fixed', categoryId: 'exam', phaseId: 'step3', priority: 'must', subCosts: [] }] }, 0);
-    expect(migrated.settings.schemaVersion).toBe(5);
+    expect(migrated.settings.schemaVersion).toBe(6);
     expect(migrated.inheritance).toBeNull();
     expect(migrated.costs[0].maybe).toBe(false);
     expect(migrated.costs[0].included).toBe(true);

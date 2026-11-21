@@ -8,6 +8,7 @@ import {
   CostKind,
   CostVariant,
   Currency,
+  Extra,
   InheritancePlan,
   Money,
   Phase,
@@ -71,6 +72,7 @@ export interface SeedCostInput {
   note?: string;
   url?: string;
   tags?: string[];
+  lenderId?: string;
 }
 
 export interface SeedTaskInput {
@@ -115,6 +117,7 @@ export interface SeedFormatInput {
   costs?: SeedCostInput[];
   tasks?: SeedTaskInput[];
   inheritance?: InheritancePlan | null;
+  extras?: Extra[];
 }
 
 export function buildDefaultPhases(): Phase[] {
@@ -298,6 +301,7 @@ export function mapSeedToAppData(
       order: idx,
       tags: c.tags ?? [],
       verify: hasVerifySub || undefined,
+      lenderId: c.lenderId,
       createdAt: now,
       updatedAt: now,
     };
@@ -359,6 +363,7 @@ export function mapSeedToAppData(
     costs,
     tasks,
     inheritance: input.inheritance ?? baseData?.inheritance ?? null,
+    extras: input.extras ?? baseData?.extras ?? [],
   };
 }
 
@@ -449,6 +454,7 @@ export function mergeSeedIntoAppData(current: AppData, incoming: SeedFormatInput
   return {
     settings,
     inheritance: incoming.inheritance ?? current.inheritance ?? null,
+    extras: incoming.extras ? unionById(current.extras ?? [], incoming.extras) : (current.extras ?? []),
     accounts: mergedAccounts,
     transactions: mergedTxns,
     costs: mergedCosts,
@@ -464,6 +470,7 @@ export function buildEmptyAppData(): AppData {
     costs: [],
     tasks: [],
     inheritance: null,
+    extras: [],
   };
 }
 

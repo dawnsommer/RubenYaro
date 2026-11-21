@@ -8,7 +8,10 @@ export interface PlanHeroProps {
   includeMaybes: boolean;
   onToggleMaybes: () => void;
   fundsPkr: number;
-  owedPkr: number; // still owed to people I borrowed from
+  owedPkr: number; // still owed to people, not already a plan cost (comes off the spare)
+  owedAllPkr: number; // everything I still owe people
+  extrasPkr: number; // things I could sell / money I expect (not counted)
+  extrasSurePkr: number; // the sure + likely part
   paidPkr: number;
   planMarketPkr: number;
   planCardPkr: number;
@@ -289,9 +292,21 @@ export function PlanHero(p: PlanHeroProps) {
           <Detail label="My money">
             <Amount pkr={p.fundsPkr} />
           </Detail>
-          {p.owedPkr > 0.5 && (
+          {p.owedAllPkr > 0.5 && (
             <Detail label="I owe people">
-              <Amount pkr={p.owedPkr} tone="negative" />
+              <Amount pkr={p.owedAllPkr} tone="negative" />
+            </Detail>
+          )}
+          {p.extrasPkr > 0.5 && (
+            <Detail label="Extras could add">
+              <Amount pkr={p.extrasSurePkr} compact prefix="+" tone="positive" />
+              {p.extrasPkr - p.extrasSurePkr > 0.5 && (
+                <span className="text-[var(--text-faint)]">
+                  {' '}
+                  (+
+                  <Amount pkr={p.extrasPkr - p.extrasSurePkr} compact tone="muted" /> maybe)
+                </span>
+              )}
             </Detail>
           )}
           <Detail label={p.includeMaybes ? 'Maybes (included)' : 'Maybes would add'}>
